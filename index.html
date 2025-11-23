@@ -8,52 +8,66 @@
             body {
                 font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
                 margin: 0;
-                background: #f7f9fc;
-                color: #111;
+                background: #0f0f0f;
+                color: #eeeeee;
             }
+
             header {
                 padding: 12px 20px;
-                background: #0b5cff;
-                color: white;
+                background: #1e1e1e;
+                color: #ffffff;
                 display:flex;
                 align-items:center;
                 gap:12px;
+                border-bottom: 1px solid #333;
             }
+
             header h1 {
                 font-size:18px;
                 margin:0;
             }
+
             #container {
                 padding: 16px;
                 max-width:1200px;
                 margin: 0 auto;
             }
+
             svg {
                 width: 100%;
                 height: 75vh;
                 border-radius: 8px;
-                box-shadow: 0 6px 18px rgba(12,20,40,0.08);
-                background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+                box-shadow: 0 6px 18px rgba(0,0,0,0.8);
+                background: #1a1a1a;
             }
+
             .circle {
-                stroke: rgba(0,0,0,0.2);
+                stroke: rgba(255,255,255,0.25);
                 stroke-width:0.7;
-                opacity: 0.9;
+                opacity: 0.95;
                 cursor: pointer;
             }
+
             .tooltip {
                 position: absolute;
                 pointer-events: none;
                 padding: 6px 8px;
                 font-size: 12px;
-                background: rgba(0,0,0,0.8);
-                color: white;
+                background: rgba(20,20,20,0.9);
+                color: #fff;
                 border-radius: 6px;
                 transform: translate(-50%, -120%);
                 white-space: nowrap;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                box-shadow: 0 2px 6px rgba(0,0,0,0.6);
                 z-index: 10;
+                border: 1px solid #444;
             }
+
+            #legend div span {
+                color: #ffffff;
+                font-weight: 500;
+            }
+
             .controls {
                 margin-top: 12px;
                 display:flex;
@@ -61,22 +75,37 @@
                 align-items:center;
                 flex-wrap:wrap;
             }
+
             button {
                 padding: 8px 12px;
                 border-radius: 6px;
                 border: none;
-                background: #0b5cff;
-                color: white;
+                background: #333;
+                color: #eee;
                 cursor: pointer;
                 font-weight: 600;
+                border: 1px solid #555;
+                transition: 0.15s;
             }
+
+            button:hover {
+                background: #444;
+            }
+
             button.active {
                 background: #ff7a00;
+                color: #000;
+                border-color: #ff7a00;
             }
+
             footer {
                 margin-top: 16px;
-                color: #555;
+                color: #aaa;
                 font-size: 13px;
+            }
+
+            a {
+                color: #4da3ff;
             }
         </style>
 
@@ -175,7 +204,7 @@
 
             function updateLegend(categories, colorScale) {
                 const legend = document.getElementById("legend");
-                legend.innerHTML = "";  // clear previous legend
+                legend.innerHTML = "";
 
                 categories.forEach(cat => {
                     const item = document.createElement("div");
@@ -192,7 +221,6 @@
 
                     const label = document.createElement("span");
                     label.style.fontSize = "13px";
-                    label.style.color = "#333";
                     label.textContent = cat;
 
                     item.appendChild(swatch);
@@ -252,7 +280,6 @@
             first_draw();
 
 
-            // UPDATE DOT COLORS BASED ON Category COLUMN
             function updateDots(dataset) {
 
                 if (!dataset || dataset.length === 0) return;
@@ -261,67 +288,77 @@
                 const latestDate = d3.max(dataset, d => d.Date);
                 const latestRows = dataset.filter(d => d.Date === latestDate);
 
+                // Parse Net worth and compute proportions
                 latestRows.forEach(d => d.NetWorth = +d["Net worth"]);
-
-                const total = d3.sum(latestRows, d => d.NetWorth);
-
-                const totalRows = dataset.length;
-                latestRows.forEach(d => {
-                    d.rowCount = Math.round((d.NetWorth / total) * totalRows);
-                });
-
-                // Fix rounding so totalRows is exact
-                let assigned = d3.sum(latestRows, d => d.rowCount);
-                while (assigned !== totalRows) {
-                    const diff = totalRows - assigned;
-                    latestRows[0].rowCount += diff;
-                    assigned = d3.sum(latestRows, d => d.rowCount);
-                }
-
-                const rowCategories = [];
-                latestRows.forEach(row => {
-                    for (let i = 0; i < row.rowCount; i++) {
-                        rowCategories.push(row.Category);
-                    }
-                });
-
-                // Shuffle so the map is not striped
-                for (let i = rowCategories.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [rowCategories[i], rowCategories[j]] = [rowCategories[j], rowCategories[i]];
-                }
+                const totalNetWorth = d3.sum(latestRows, d => d.NetWorth);
 
                 const categories = latestRows.map(d => d.Category);
+                const proportions = latestRows.map(d => d.NetWorth / totalNetWorth);
 
+                // Color scale
                 const color = d3.scaleOrdinal()
                     .domain(categories)
                     .range(["#d73027", "#1a9850", "#4575b4", "#fee08b", "#fc8d59", "#91bfdb"]);
 
-                const circles = svg.selectAll("circle");
+                // Get all circles and sort them by x-position
+                const circlesSelection = svg.selectAll("circle");
+                const nodes = circlesSelection.nodes();
 
-                circles.each(function(d, i) {
-                    if (i < rowCategories.length) {
-                        d.Category = rowCategories[i];
-                        d3.select(this).attr("visibility", "visible");
-                    } else {
-                        d3.select(this).attr("visibility", "hidden");
+                nodes.sort((a, b) => {
+                    const ax = +a.getAttribute("cx");
+                    const bx = +b.getAttribute("cx");
+                    return ax - bx;
+                });
+
+                const totalDots = nodes.length;
+
+                // Decide how many dots each category gets (at least 1 each)
+                let counts = proportions.map(p => Math.max(1, Math.round(p * totalDots)));
+
+                let sumCounts = counts.reduce((a, b) => a + b, 0);
+                while (sumCounts !== totalDots) {
+                    const diff = totalDots - sumCounts;
+                    counts[0] += diff;
+                    sumCounts = counts.reduce((a, b) => a + b, 0);
+                }
+
+                // Build a flat list of categories for each dot (in band order)
+                const bandCategories = [];
+                latestRows.forEach((row, idx) => {
+                    const cat = row.Category;
+                    const n = counts[idx];
+                    for (let i = 0; i < n; i++) {
+                        bandCategories.push(cat);
                     }
                 });
 
-                // Color transition
-                circles.transition()
+                // 7. Assign categories to dots according to x-sorted order
+                nodes.forEach((node, i) => {
+                    const sel = d3.select(node);
+                    if (i < bandCategories.length) {
+                        const cat = bandCategories[i];
+                        node.__data__.Category = cat;
+                        sel.attr("visibility", "visible");
+                    } else {
+                        sel.attr("visibility", "hidden");
+                    }
+                });
+
+                // Animate colors
+                svg.selectAll("circle")
+                    .transition()
                     .duration(400)
                     .attr("fill", d => color(d.Category));
 
                 // Tooltip
-                circles.on("mousemove", (event, d) => {
-                    tooltip.style("display", "block")
-                        .style("left", event.pageX + "px")
-                        .style("top", (event.pageY - 20) + "px")
-                        .text(d.Category);
-                });
-
-                circles.on("mouseout", () => tooltip.style("display", "none"));
+                svg.selectAll("circle")
+                    .on("mousemove", (event, d) => {
+                        tooltip.style("display", "block")
+                            .style("left", event.pageX + "px")
+                            .style("top", (event.pageY - 20) + "px")
+                            .text(d.Category);
+                    })
+                    .on("mouseout", () => tooltip.style("display", "none"));
 
                 // Legend
                 updateLegend(categories, color);
