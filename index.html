@@ -36,10 +36,9 @@
                 background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
             }
             .circle {
-                fill: steelblue;
                 stroke: rgba(0,0,0,0.2);
                 stroke-width:0.7;
-                opacity: 0.8;
+                opacity: 0.9;
                 cursor: pointer;
             }
             .tooltip {
@@ -69,6 +68,10 @@
                 background: #0b5cff;
                 color: white;
                 cursor: pointer;
+                font-weight: 600;
+            }
+            button.active {
+                background: #ff7a00;
             }
             footer {
                 margin-top: 16px;
@@ -76,6 +79,7 @@
                 font-size: 13px;
             }
         </style>
+
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
     </head>
@@ -86,9 +90,19 @@
         </header>
 
         <div id="container">
-            <div id="description" style='padding-bottom: 20px'> Welcome to our interactive visualization about wealth inequality in America. Click on button 1 to get started. </div>
+            <div id="description" style="padding-bottom: 20px">
+                Welcome to our interactive visualization about wealth inequality in America.
+                Click on button 1 to get started.
+            </div>
 
             <svg id="map"></svg>
+
+            <div id="legend" style="
+                display: flex;
+                gap: 14px;
+                margin-top: 16px;
+                flex-wrap: wrap;
+            "></div>
 
             <div class="controls">
                 <button id="btn1">1</button>
@@ -100,6 +114,7 @@
             </div>
 
             <div id="tooltip" class="tooltip" style="display:none;"></div>
+
             <footer>
                 Data sourced from
                 <a href="https://www.federalreserve.gov/releases/z1/dataviz/dfa/distribute/chart/">
@@ -108,139 +123,253 @@
             </footer>
         </div>
 
+
         <script>
 
-            // IT IS VERY IMPORTANT WE KEEP TRACK OF THE STATES DATA FOR RESIZING THE CIRCLES WHEN THE WINDOW IS RESIZED
+            // GLOBAL VARIABLES
             let cachedStates = null;
-            
-            // make sure dots don't go off graph border when window resizes
-            window.addEventListener("resize", repositionCircles);
+            let raceData, ageData, incomeData, networthData, educationData, generationData;
+            let dataReady = false;
 
-            function repositionCircles() {
-                let width = svg.node().clientWidth;
-                let height = svg.node().clientHeight;
+            const svg = d3.select("#map");
+            const projection = d3.geoAlbersUsa();
+            const path = d3.geoPath(projection);
+            const tooltip = d3.select("#tooltip");
+            const description = document.querySelector("#description");
+
+
+            Promise.all([
+                d3.csv("data/dfa-race-levels.csv"),
+                d3.csv("data/dfa-age-levels.csv"),
+                d3.csv("data/dfa-income-levels.csv"),
+                d3.csv("data/dfa-networth-levels.csv"),
+                d3.csv("data/dfa-education-levels.csv"),
+                d3.csv("data/dfa-generation-levels.csv")
+            ])
+            .then(([race, age, income, networth, education, generation]) => {
+                raceData = race;
+                ageData = age;
+                incomeData = income;
+                networthData = networth;
+                educationData = education;
+                generationData = generation;
+
+                dataReady = true;
+                console.log("All CSVs loaded successfully with Category column");
+            });
+
+
+            // RESIZE HANDLER
+            window.addEventListener("resize", () => {
+                if (!cachedStates) return;
+
+                const width = svg.node().clientWidth;
+                const height = svg.node().clientHeight;
 
                 projection.fitSize([width, height], cachedStates);
 
                 svg.selectAll("circle")
                     .attr("cx", d => projection([d.lon, d.lat])[0])
                     .attr("cy", d => projection([d.lon, d.lat])[1]);
+            });
+
+            function updateLegend(categories, colorScale) {
+                const legend = document.getElementById("legend");
+                legend.innerHTML = "";  // clear previous legend
+
+                categories.forEach(cat => {
+                    const item = document.createElement("div");
+                    item.style.display = "flex";
+                    item.style.alignItems = "center";
+                    item.style.gap = "6px";
+
+                    const swatch = document.createElement("div");
+                    swatch.style.width = "14px";
+                    swatch.style.height = "14px";
+                    swatch.style.borderRadius = "3px";
+                    swatch.style.backgroundColor = colorScale(cat);
+                    swatch.style.border = "1px solid rgba(0,0,0,0.3)";
+
+                    const label = document.createElement("span");
+                    label.style.fontSize = "13px";
+                    label.style.color = "#333";
+                    label.textContent = cat;
+
+                    item.appendChild(swatch);
+                    item.appendChild(label);
+                    legend.appendChild(item);
+                });
             }
 
-            const svg = d3.select("#map")
+            // INITIAL DRAW OF 1000 DOTS
+            function first_draw() {
 
-            // Create a projection
-            const projection = d3.geoAlbersUsa();
-            const path = d3.geoPath(projection);
+                const width = svg.node().clientWidth;
+                const height = svg.node().clientHeight;
 
-            // Load actual US GeoJSON
-            const usaGeoJSON = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json";
+                d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json")
+                    .then(usData => {
 
-            function first_draw(){
-                // svg.selectAll("*").remove();
+                        const states = topojson.feature(usData, usData.objects.states);
+                        cachedStates = states;
 
-                let width = svg.node().clientWidth;
-                let height = svg.node().clientHeight;
+                        projection.fitSize([width, height], states);
 
-                d3.json(usaGeoJSON).then(data => {
-                    const states = topojson.feature(data, data.objects.states);
-                    cachedStates = states;
+                        const bounds = path.bounds(states);
+                        const [[x0, y0], [x1, y1]] = bounds;
+                        const area = (x1 - x0) * (y1 - y0);
 
-                    // IMPORTANT — fit map to the visible SVG size
-                    projection.fitSize([width, height], states);
+                        const targetDots = 1000;
+                        const spacing = Math.sqrt(area / targetDots);
 
-                    // Now generate your grid + circles as before
-                    const points = [];
-                    const bounds = path.bounds(states);
-                    const [[x0, y0], [x1, y1]] = bounds;
-
-                    const area = (x1 - x0) * (y1 - y0);
-                    const spacing = Math.sqrt(area / 1000);
-
-                    for (let x = x0; x <= x1; x += spacing) {
-                        for (let y = y0; y <= y1; y += spacing) {
-                            const p = [projection.invert([x, y])];
-                            if (p[0] && d3.geoContains(states, p[0])) {
+                        const points = [];
+                        for (let x = x0; x <= x1; x += spacing) {
+                            for (let y = y0; y <= y1; y += spacing) {
                                 const inverted = projection.invert([x, y]);
                                 if (inverted && d3.geoContains(states, inverted)) {
                                     points.push({ lon: inverted[0], lat: inverted[1] });
                                 }
                             }
                         }
-                    }
 
-                    if (points.length > 1000) points.length = 1000;
+                        if (points.length > targetDots) points.length = targetDots;
 
-                    svg.selectAll("circle")
-                        .data(points)
-                        .enter()
-                        .append("circle")
-                        .attr("cx", d => projection([d.lon, d.lat])[0])
-                        .attr("cy", d => projection([d.lon, d.lat])[1])
-                        .attr("r", 0)
-                        .transition()
-                        .duration(400)
-                        .attr("r", 3);
-                });
+                        svg.selectAll("circle")
+                            .data(points)
+                            .enter()
+                            .append("circle")
+                            .attr("class", "circle")
+                            .attr("cx", d => projection([d.lon, d.lat])[0])
+                            .attr("cy", d => projection([d.lon, d.lat])[1])
+                            .attr("fill", "#6fa3d6")
+                            .attr("r", 0)
+                            .transition()
+                            .duration(400)
+                            .attr("r", 3);
+                    });
             }
 
             first_draw();
 
-            // Description that tells the story on the map when a button is clicked
-            let description = document.querySelector('#description');
 
-            // FUNCTION FOR BUTTON 1 
-            function button1_func(){
-                current_button = '1'
-                description.textContent = 'Description #1 Here';
-                // READ AND TRANSFORM APPROPRIATE DATASET FROM DATA FOLDER
-                // SORT THE CIRCLES BY X VALUE ASCENDING, THEN Y VALUE ASCENDING
-                // CHANGE OPACITY/COLORS OF CIRCLES BY PROPORTION OF GROUP BEING REPRESENTED
-                // UPDATE LEGEND 
-            }
-            let button1 = document.querySelector('#btn1');
-            button1.addEventListener('click', button1_func);
+            // UPDATE DOT COLORS BASED ON Category COLUMN
+            function updateDots(dataset) {
 
-            // FUNCTION FOR BUTTON 2
-            function button2_func(){
-                current_button = '2'
-                description.textContent = 'Description #2 Here';
-            }
-            let button2 = document.querySelector('#btn2');
-            button2.addEventListener('click', button2_func);
+                if (!dataset || dataset.length === 0) return;
 
-            // FUNCTION FOR BUTTON 3
-            function button3_func(){
-                current_button = '3'
-                description.textContent = 'Description #3 Here';
-            }
-            let button3 = document.querySelector('#btn3');
-            button3.addEventListener('click', button3_func);
+                // Only use the latest date
+                const latestDate = d3.max(dataset, d => d.Date);
+                const latestRows = dataset.filter(d => d.Date === latestDate);
 
-            // FUNCTION FOR BUTTON 4
-            function button4_func(){
-                current_button = '4'
-                description.textContent = 'Description #4 Here';
-            }
-            let button4 = document.querySelector('#btn4');
-            button4.addEventListener('click', button4_func);
+                latestRows.forEach(d => d.NetWorth = +d["Net worth"]);
 
-            // FUNCTION FOR BUTTON 5
-            function button5_func(){
-                current_button = '5'
-                description.textContent = 'Description #5 Here';
-            }
-            let button5 = document.querySelector('#btn5');
-            button5.addEventListener('click', button5_func);
+                const total = d3.sum(latestRows, d => d.NetWorth);
 
-            // FUNCTION FOR BUTTON 6
-            function button6_func(){
-                current_button = '6'
-                description.textContent = 'Description #6 Here';
+                const totalRows = dataset.length;
+                latestRows.forEach(d => {
+                    d.rowCount = Math.round((d.NetWorth / total) * totalRows);
+                });
+
+                // Fix rounding so totalRows is exact
+                let assigned = d3.sum(latestRows, d => d.rowCount);
+                while (assigned !== totalRows) {
+                    const diff = totalRows - assigned;
+                    latestRows[0].rowCount += diff;
+                    assigned = d3.sum(latestRows, d => d.rowCount);
+                }
+
+                const rowCategories = [];
+                latestRows.forEach(row => {
+                    for (let i = 0; i < row.rowCount; i++) {
+                        rowCategories.push(row.Category);
+                    }
+                });
+
+                // Shuffle so the map is not striped
+                for (let i = rowCategories.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [rowCategories[i], rowCategories[j]] = [rowCategories[j], rowCategories[i]];
+                }
+
+                const categories = latestRows.map(d => d.Category);
+
+                const color = d3.scaleOrdinal()
+                    .domain(categories)
+                    .range(["#d73027", "#1a9850", "#4575b4", "#fee08b", "#fc8d59", "#91bfdb"]);
+
+                const circles = svg.selectAll("circle");
+
+                circles.each(function(d, i) {
+                    if (i < rowCategories.length) {
+                        d.Category = rowCategories[i];
+                        d3.select(this).attr("visibility", "visible");
+                    } else {
+                        d3.select(this).attr("visibility", "hidden");
+                    }
+                });
+
+                // Color transition
+                circles.transition()
+                    .duration(400)
+                    .attr("fill", d => color(d.Category));
+
+                // Tooltip
+                circles.on("mousemove", (event, d) => {
+                    tooltip.style("display", "block")
+                        .style("left", event.pageX + "px")
+                        .style("top", (event.pageY - 20) + "px")
+                        .text(d.Category);
+                });
+
+                circles.on("mouseout", () => tooltip.style("display", "none"));
+
+                // Legend
+                updateLegend(categories, color);
             }
-            let button6 = document.querySelector('#btn6');
-            button6.addEventListener('click', button6_func);
-            
+
+
+            // BUTTON HANDLERS
+            function setActive(btnId) {
+                document.querySelectorAll(".controls button").forEach(b => b.classList.remove("active"));
+                document.querySelector(btnId).classList.add("active");
+            }
+
+            btn1.onclick = () => {
+                setActive("#btn1");
+                description.textContent = "Race distribution of wealth.";
+                updateDots(raceData);
+            };
+
+            btn2.onclick = () => {
+                setActive("#btn2");
+                description.textContent = "Age distribution of wealth.";
+                updateDots(ageData);
+            };
+
+            btn3.onclick = () => {
+                setActive("#btn3");
+                description.textContent = "Income distribution of wealth.";
+                updateDots(incomeData);
+            };
+
+            btn4.onclick = () => {
+                setActive("#btn4");
+                description.textContent = "Net worth distribution of wealth.";
+                updateDots(networthData);
+            };
+
+            btn5.onclick = () => {
+                setActive("#btn5");
+                description.textContent = "Education distribution of wealth.";
+                updateDots(educationData);
+            };
+
+            btn6.onclick = () => {
+                setActive("#btn6");
+                description.textContent = "Generational distribution of wealth.";
+                updateDots(generationData);
+            };
+
         </script>
 
     </body>
