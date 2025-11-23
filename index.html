@@ -1,1 +1,247 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>The State of Wealth Inequality in the U.S.</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <style>
+            body {
+                font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+                margin: 0;
+                background: #f7f9fc;
+                color: #111;
+            }
+            header {
+                padding: 12px 20px;
+                background: #0b5cff;
+                color: white;
+                display:flex;
+                align-items:center;
+                gap:12px;
+            }
+            header h1 {
+                font-size:18px;
+                margin:0;
+            }
+            #container {
+                padding: 16px;
+                max-width:1200px;
+                margin: 0 auto;
+            }
+            svg {
+                width: 100%;
+                height: 75vh;
+                border-radius: 8px;
+                box-shadow: 0 6px 18px rgba(12,20,40,0.08);
+                background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+            }
+            .circle {
+                fill: steelblue;
+                stroke: rgba(0,0,0,0.2);
+                stroke-width:0.7;
+                opacity: 0.8;
+                cursor: pointer;
+            }
+            .tooltip {
+                position: absolute;
+                pointer-events: none;
+                padding: 6px 8px;
+                font-size: 12px;
+                background: rgba(0,0,0,0.8);
+                color: white;
+                border-radius: 6px;
+                transform: translate(-50%, -120%);
+                white-space: nowrap;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                z-index: 10;
+            }
+            .controls {
+                margin-top: 12px;
+                display:flex;
+                gap:8px;
+                align-items:center;
+                flex-wrap:wrap;
+            }
+            button {
+                padding: 8px 12px;
+                border-radius: 6px;
+                border: none;
+                background: #0b5cff;
+                color: white;
+                cursor: pointer;
+            }
+            footer {
+                margin-top: 16px;
+                color: #555;
+                font-size: 13px;
+            }
+        </style>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    </head>
 
+    <body>
+        <header>
+            <h1>The State of Wealth Inequality in the U.S.</h1>
+        </header>
+
+        <div id="container">
+            <div id="description" style='padding-bottom: 20px'> Welcome to our interactive visualization about wealth inequality in America. Click on button 1 to get started. </div>
+
+            <svg id="map"></svg>
+
+            <div class="controls">
+                <button id="btn1">1</button>
+                <button id="btn2">2</button>
+                <button id="btn3">3</button>
+                <button id="btn4">4</button>
+                <button id="btn5">5</button>
+                <button id="btn6">6</button>
+            </div>
+
+            <div id="tooltip" class="tooltip" style="display:none;"></div>
+            <footer>
+                Data sourced from
+                <a href="https://www.federalreserve.gov/releases/z1/dataviz/dfa/distribute/chart/">
+                    Federal Reserve Z1 Data
+                </a>
+            </footer>
+        </div>
+
+        <script>
+
+            // IT IS VERY IMPORTANT WE KEEP TRACK OF THE STATES DATA FOR RESIZING THE CIRCLES WHEN THE WINDOW IS RESIZED
+            let cachedStates = null;
+            
+            // make sure dots don't go off graph border when window resizes
+            window.addEventListener("resize", repositionCircles);
+
+            function repositionCircles() {
+                let width = svg.node().clientWidth;
+                let height = svg.node().clientHeight;
+
+                projection.fitSize([width, height], cachedStates);
+
+                svg.selectAll("circle")
+                    .attr("cx", d => projection([d.lon, d.lat])[0])
+                    .attr("cy", d => projection([d.lon, d.lat])[1]);
+            }
+
+            const svg = d3.select("#map")
+
+            // Create a projection
+            const projection = d3.geoAlbersUsa();
+            const path = d3.geoPath(projection);
+
+            // Load actual US GeoJSON
+            const usaGeoJSON = "https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json";
+
+            function first_draw(){
+                // svg.selectAll("*").remove();
+
+                let width = svg.node().clientWidth;
+                let height = svg.node().clientHeight;
+
+                d3.json(usaGeoJSON).then(data => {
+                    const states = topojson.feature(data, data.objects.states);
+                    cachedStates = states;
+
+                    // IMPORTANT — fit map to the visible SVG size
+                    projection.fitSize([width, height], states);
+
+                    // Now generate your grid + circles as before
+                    const points = [];
+                    const bounds = path.bounds(states);
+                    const [[x0, y0], [x1, y1]] = bounds;
+
+                    const area = (x1 - x0) * (y1 - y0);
+                    const spacing = Math.sqrt(area / 1000);
+
+                    for (let x = x0; x <= x1; x += spacing) {
+                        for (let y = y0; y <= y1; y += spacing) {
+                            const p = [projection.invert([x, y])];
+                            if (p[0] && d3.geoContains(states, p[0])) {
+                                const inverted = projection.invert([x, y]);
+                                if (inverted && d3.geoContains(states, inverted)) {
+                                    points.push({ lon: inverted[0], lat: inverted[1] });
+                                }
+                            }
+                        }
+                    }
+
+                    if (points.length > 1000) points.length = 1000;
+
+                    svg.selectAll("circle")
+                        .data(points)
+                        .enter()
+                        .append("circle")
+                        .attr("cx", d => projection([d.lon, d.lat])[0])
+                        .attr("cy", d => projection([d.lon, d.lat])[1])
+                        .attr("r", 0)
+                        .transition()
+                        .duration(400)
+                        .attr("r", 3);
+                });
+            }
+
+            first_draw();
+
+            // Description that tells the story on the map when a button is clicked
+            let description = document.querySelector('#description');
+
+            // FUNCTION FOR BUTTON 1 
+            function button1_func(){
+                current_button = '1'
+                description.textContent = 'Description #1 Here';
+                // READ AND TRANSFORM APPROPRIATE DATASET FROM DATA FOLDER
+                // SORT THE CIRCLES BY X VALUE ASCENDING, THEN Y VALUE ASCENDING
+                // CHANGE OPACITY/COLORS OF CIRCLES BY PROPORTION OF GROUP BEING REPRESENTED
+                // UPDATE LEGEND 
+            }
+            let button1 = document.querySelector('#btn1');
+            button1.addEventListener('click', button1_func);
+
+            // FUNCTION FOR BUTTON 2
+            function button2_func(){
+                current_button = '2'
+                description.textContent = 'Description #2 Here';
+            }
+            let button2 = document.querySelector('#btn2');
+            button2.addEventListener('click', button2_func);
+
+            // FUNCTION FOR BUTTON 3
+            function button3_func(){
+                current_button = '3'
+                description.textContent = 'Description #3 Here';
+            }
+            let button3 = document.querySelector('#btn3');
+            button3.addEventListener('click', button3_func);
+
+            // FUNCTION FOR BUTTON 4
+            function button4_func(){
+                current_button = '4'
+                description.textContent = 'Description #4 Here';
+            }
+            let button4 = document.querySelector('#btn4');
+            button4.addEventListener('click', button4_func);
+
+            // FUNCTION FOR BUTTON 5
+            function button5_func(){
+                current_button = '5'
+                description.textContent = 'Description #5 Here';
+            }
+            let button5 = document.querySelector('#btn5');
+            button5.addEventListener('click', button5_func);
+
+            // FUNCTION FOR BUTTON 6
+            function button6_func(){
+                current_button = '6'
+                description.textContent = 'Description #6 Here';
+            }
+            let button6 = document.querySelector('#btn6');
+            button6.addEventListener('click', button6_func);
+            
+        </script>
+
+    </body>
+</html>
