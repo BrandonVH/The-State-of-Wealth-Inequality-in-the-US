@@ -118,11 +118,23 @@
             <h1>The State of Wealth Inequality in the U.S.</h1>
         </header>
 
-        <div id="container">
-            <div id="description" style="padding-bottom: 20px">
+        <div style="padding-bottom: 20px; max-width: 800px; margin: 0 auto; line-height: 1.5; padding-top: 30px;">
+    
+            <p style="margin-top: 0; margin-bottom: 16px;">
+                Wealth inequality in the United States has widened in the past decades.
+                This interactive visualization breaks down distributions across multiple demographic dimensions in the United States using 
+                Federal Reserve Z1 data. Through each filter, users can explore how wealth is distributed across major 
+                demographic categories, including race, age, income, net worth, education, and generation. 
+                Each view dynamically reallocates 1,000 dots to reflect the share of total household wealth held by each group 
+                according to color-coded categories and tooltips. Our project aims to make complex economic
+                inequality data accessible, visual, and meaningful for a general audience.
+            </p>
+
+            <div id="description">
                 Welcome to our interactive visualization about wealth inequality in America.
                 Click on button 1 to get started.
             </div>
+        </div>
 
             <svg id="map"></svg>
 
@@ -133,7 +145,7 @@
                 flex-wrap: wrap;
             "></div>
 
-            <div class="controls">
+            <div class="controls" style="justify-content: center; width: 100%;">
                 <button id="btn1">1</button>
                 <button id="btn2">2</button>
                 <button id="btn3">3</button>
@@ -143,6 +155,30 @@
             </div>
 
             <div id="tooltip" class="tooltip" style="display:none;"></div>
+
+            <section id="writeup" style="max-width: 900px; margin: 40px auto; line-height: 1.6; padding: 20px;">
+                <h3>1. What have you done so far?</h3>
+                <p>
+                    So far, we've built the full structure of the interactive visualization, including the U.S. map layout,
+                    point-generation system, and the dynamic dot-redistribution algorithm. We connected the interface to the most
+                    recent year from six different Federal Reserve Z1 datasets (race, age, income, net worth, education, and generation).
+                    We also implemented button navigation so that each dataset can be displayed instantly, with color-coded categories, 
+                    a responsive legend, and dynamic tooltips that update as the user moves between views. Altogether, the page is fully 
+                    functional and allows users to explore major dimensions of wealth inequality through an intuitive and engaging interface.
+                </p>
+
+                <h3>2. What will be the most challenging part of your project to design and why?</h3>
+                <p>
+                    The most challenging part of the project will be creating a clear and meaningful visual narrative that helps users 
+                    interpret inequality data rather than simply displaying it. Wealth distribution is complex and users need guidance
+                    to understand the significance behind the numbers and categories. Another challenge will be managing layout constraints such 
+                    as keeping text, buttons, and the visualization properly aligned on different screen sizes while keeping the visuals clear, 
+                    because poor alignment or spacing can confuse users and reduce the effectiveness of the data presentation across devices. It 
+                    will also be difficult to ensure that every demographic group receives appropriate visual weight without overwhelming the viewer.
+                    If we're not careful,disproportionate scaling or color emphasis can accidentally exaggerate or minimize certain disparities, 
+                    leading to misinterpretation.
+                </p>
+            </section>
 
             <footer>
                 Data sourced from
