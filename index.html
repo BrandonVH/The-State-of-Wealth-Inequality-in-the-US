@@ -121,26 +121,25 @@
         <div style="padding-bottom: 20px; max-width: 800px; margin: 0 auto; line-height: 1.5; padding-top: 30px;">
 
             <div id="description">
-                Wealth inequality in the United States has widened in the past decades.
-                This interactive visualization breaks down distributions across multiple demographic dimensions in the United States using 
-                Federal Reserve Z1 data. Through each filter, users can explore how wealth is distributed across major 
-                demographic categories, including race, age, income, net worth, education, and generation. 
-                Each view dynamically reallocates 1,000 dots to reflect the share of total household wealth held by each group 
-                according to color-coded categories and tooltips. Our project aims to make complex economic
-                inequality data accessible, visual, and meaningful for a general audience.
+                When it comes to the "American Dream", we often talk as if every American is afforded the same opportunities and 
+                potential. On the surface, the U.S. economy appears prosperous and fair, with the meritocractic belief that hard
+                work alone can secure success. When most people imagine wealth distribution, they believe in fairness and fail to 
+                understand how dramatically unbalanced it truly is. Once we break differences down by race, age, income, education, 
+                and generation, we can begin to understand all the facets and patterns of wealth inequality. This visualization 
+                uses 1,000 dots to visually allocate American wealth into demographic groups by color. Our project aims to make 
+                complex economic inequality data accessible, visual, and meaningful for a general audience.
             </div>
         </div>
 
             <div id="map-title" style="
                 text-align: center;
                 margin: 10px 0;
-                font-size: 30px;
+                font-size: 20px;
                 border-radius: 8px;
                 box-shadow: 0 6px 18px rgba(0,0,0,0.8);
                 background: #1a1a1a;
             ">
-                Welcome to our interactive visualization about wealth inequality in America.
-                Click on button 1 to get started.
+                Click the “Education” button below to begin exploring how wealth is actually distributed in the United States.
             </div>
 
             <svg id="map"></svg>
@@ -154,12 +153,12 @@
             "></div>
 
             <div class="controls" style="justify-content: center; width: 100%;">
-                <button id="btn1">1</button>
-                <button id="btn2">2</button>
-                <button id="btn3">3</button>
-                <button id="btn4">4</button>
-                <button id="btn5">5</button>
-                <button id="btn6">6</button>
+                <button id="btnEdu">Education</button>
+                <button id="btnAge">Age</button>
+                <button id="btnInc">Income</button>
+                <button id="btnGen">Generation</button>
+                <button id="btnRace">Race</button>
+                <button id="btnNW">Net Worth</button>
             </div>
 
             <div id="tooltip" class="tooltip" style="display:none;"></div>
@@ -211,6 +210,32 @@
             const description = document.querySelector("#description");
             const map_title = document.querySelector("#map-title");
 
+            const incomeLabelMap = {
+                pct99to100: "Top 1% (99–100th)",
+                pct80to99: "80–99th percentile",
+                pct60to80: "60–80th percentile",
+                pct40to60: "40–60th percentile",
+                pct20to40: "20–40th percentile",
+                pct00to20: "0-20th percentile"
+            };
+
+            const ageLabelMap = {
+                age70plus: "70 and older",
+                age55to69: "55–69",
+                age40to54: "40–54",
+                ageunder40: "Under 40"
+            };
+
+            function getLabel(cat, dataset) {
+                if (dataset === incomeData && incomeLabelMap[cat]) { 
+                    return incomeLabelMap[cat];
+                }
+                if (dataset === ageData && ageLabelMap[cat]) {
+                    return ageLabelMap[cat];
+                }
+                return cat;
+            }
+
             Promise.all([
                 d3.csv("data/dfa-race-levels.csv"),
                 d3.csv("data/dfa-age-levels.csv"),
@@ -246,7 +271,7 @@
                     .attr("cy", d => projection([d.lon, d.lat])[1]);
             });
 
-            function updateLegend(categories, colorScale) {
+            function updateLegend(categories, dataset, colorScale) {
                 const legend = document.getElementById("legend");
                 legend.innerHTML = "";
 
@@ -265,13 +290,14 @@
 
                     const label = document.createElement("span");
                     label.style.fontSize = "13px";
-                    label.textContent = cat;
+                    label.textContent = getLabel(cat, dataset);  // ⬅ use pretty label
 
                     item.appendChild(swatch);
                     item.appendChild(label);
                     legend.appendChild(item);
                 });
             }
+
 
             // INITIAL DRAW OF 1000 DOTS
             function first_draw() {
@@ -328,23 +354,66 @@
 
                 if (!dataset || dataset.length === 0) return;
 
-                // Only use the latest date
+                // 1. Only use the latest date
                 const latestDate = d3.max(dataset, d => d.Date);
-                const latestRows = dataset.filter(d => d.Date === latestDate);
+                let latestRows = dataset.filter(d => d.Date === latestDate);
 
-                // Parse Net worth and compute proportions
-                latestRows.forEach(d => d.NetWorth = +d["Net worth"]);
+                // 2. Parse Net worth as numeric
+                latestRows.forEach(d => {
+                    d.NetWorth = +d["Net worth"];
+                });
+
+                if (dataset === networthData) {
+                    const groupMap = {
+                        "TopPt1": "Top 1%",
+                        "RemainingTop1": "Top 1%",
+                        "Next9": "Next 9%",
+                        "Next40": "Next 40%",
+                        "Bottom50": "Bottom 50%"
+                    };
+
+                    const grouped = d3.rollups(
+                        latestRows,
+                        v => d3.sum(v, d => d.NetWorth),
+                        d => groupMap[d.Category]
+                    );
+
+                    // Rebuild as simple array of {Category, NetWorth}
+                    latestRows = grouped.map(([Category, NetWorth]) => ({ Category, NetWorth }));
+                }
+
+                // 4. Compute totals, categories, proportions
                 const totalNetWorth = d3.sum(latestRows, d => d.NetWorth);
-
                 const categories = latestRows.map(d => d.Category);
                 const proportions = latestRows.map(d => d.NetWorth / totalNetWorth);
 
-                // Color scale
-                const color = d3.scaleOrdinal()
-                    .domain(categories)
-                    .range(["#d73027", "#1a9850", "#4575b4", "#fee08b", "#fc8d59", "#91bfdb"]);
+                // 5. Color scale
+                let color;
 
-                // Get all circles and sort them by x-position
+                if (dataset === networthData) {
+                    // Explicit colors for grouped net-worth categories
+                    color = d3.scaleOrdinal()
+                        .domain(categories)
+                        .range(
+                            categories.map(cat => {
+                                if (cat === "Top 1%")     return "#ff6a00";  // top 1% – darkest orange
+                                if (cat === "Next 9%")    return "#ffa600";  // next 9% – medium orange
+                                if (cat === "Next 40%")   return "#ffd080";  // next 40% – light orange
+
+                                if (cat === "Bottom 50%") return "#336a99";  // bottom half – blue
+
+                                return "#888888"; // fallback
+                            })
+                        );
+                } else {
+                    // Default palette for other dimensions
+                    const baseColors = ["#d73027", "#1a9850", "#4575b4", "#fee08b", "#fc8d59", "#91bfdb"];
+                    color = d3.scaleOrdinal()
+                        .domain(categories)
+                        .range(baseColors.slice(0, categories.length));
+                }
+
+                // 6. Get all circles and sort them by x-position
                 const circlesSelection = svg.selectAll("circle");
                 const nodes = circlesSelection.nodes();
 
@@ -356,7 +425,7 @@
 
                 const totalDots = nodes.length;
 
-                // Decide how many dots each category gets (at least 1 each)
+                // 7. Decide how many dots each category gets (at least 1 each)
                 let counts = proportions.map(p => Math.max(1, Math.round(p * totalDots)));
 
                 let sumCounts = counts.reduce((a, b) => a + b, 0);
@@ -366,7 +435,7 @@
                     sumCounts = counts.reduce((a, b) => a + b, 0);
                 }
 
-                // Build a flat list of categories for each dot (in band order)
+                // 8. Build a flat list of categories for each dot (in band order)
                 const bandCategories = [];
                 latestRows.forEach((row, idx) => {
                     const cat = row.Category;
@@ -376,7 +445,7 @@
                     }
                 });
 
-                // 7. Assign categories to dots according to x-sorted order
+                // 9. Assign categories to dots according to x-sorted order
                 nodes.forEach((node, i) => {
                     const sel = d3.select(node);
                     if (i < bandCategories.length) {
@@ -388,24 +457,24 @@
                     }
                 });
 
-                // Animate colors
+                // 10. Animate colors
                 svg.selectAll("circle")
                     .transition()
                     .duration(400)
                     .attr("fill", d => color(d.Category));
 
-                // Tooltip
+                // 11. Tooltip
                 svg.selectAll("circle")
                     .on("mousemove", (event, d) => {
                         tooltip.style("display", "block")
                             .style("left", event.pageX + "px")
                             .style("top", (event.pageY - 20) + "px")
-                            .text(d.Category);
+                            .text(getLabel(d.Category, dataset));
                     })
                     .on("mouseout", () => tooltip.style("display", "none"));
 
-                // Legend
-                updateLegend(categories, color);
+                // 12. Legend (now uses grouped categories for net worth)
+                updateLegend(categories, dataset, color);
             }
 
 
@@ -415,46 +484,93 @@
                 document.querySelector(btnId).classList.add("active");
             }
 
-            btn1.onclick = () => {
-                setActive("#btn1");
-                description.textContent = "Race distribution of wealth.";
-                map_title.textContent = "Distribution of Wealth by Race";
-                updateDots(raceData);
-            };
+            btnEdu.onclick = () => {
+                setActive("#btnEdu");
+                description.innerHTML = `
+                    <strong>Many people begin with the belief that education neatly predicts financial outcomes.</strong>
+                    Diplomas seem like clear markers of stability: high school, college, and graduate degrees appear to form 
+                    a simple ladder of economic mobility. Yet when we map wealth across educational groups, the pattern 
+                    becomes more complex. Even though additional schooling is associated with higher earnings, the wealth 
+                    that households hold varies far more widely than expected. This first view suggests that education 
+                    matters, but it is only the starting point for understanding how wealth actually accumulates in the U.S.
 
-            btn2.onclick = () => {
-                setActive("#btn2");
-                description.textContent = "Age distribution of wealth.";
-                map_title.textContent = "Distribution of Wealth by Age";
-                updateDots(ageData);
-            };
-
-            btn3.onclick = () => {
-                setActive("#btn3");
-                description.textContent = "Income distribution of wealth.";
-                map_title.textContent = "Distribution of Wealth by Income";
-                updateDots(incomeData);
-            };
-
-            btn4.onclick = () => {
-                setActive("#btn4");
-                description.textContent = "Net worth distribution of wealth.";
-                map_title.textContent = "Distribution of Wealth by Net Worth";
-                updateDots(networthData);
-            };
-
-            btn5.onclick = () => {
-                setActive("#btn5");
-                description.textContent = "Education distribution of wealth.";
+            `;
                 map_title.textContent = "Distribution of Wealth by Education";
                 updateDots(educationData);
             };
 
-            btn6.onclick = () => {
-                setActive("#btn6");
-                description.textContent = "Generational distribution of wealth.";
+            btnAge.onclick = () => {
+                setActive("#btnAge");
+                description.innerHTML = `
+                <strong>Age adds a natural progression to the story, since people typically build assets as they grow 
+                older.</strong> The data reveals this relationship is far from uniform. Younger and older groups hold vastly 
+                different shares of national wealth, and the distribution doesn’t mirror what we saw with education. This 
+                contrast shows that wealth is shaped not just by personal achievements but by life stages, timing, and 
+                long-term financial cycles. As we move beyond age, the picture becomes even less predictable.
+            `;
+                map_title.textContent = "Distribution of Wealth by Age";
+                updateDots(ageData);
+            };
+
+                
+            btnInc.onclick = () => {
+                setActive("#btnInc");
+                description.innerHTML = `
+                    <strong>Income adds another familiar lens, since many assume higher earnings naturally lead to higher wealth.</strong>
+                    But when we visualize the distribution, the pattern looks very different from what education or age suggested. 
+                    Wealth does not rise proportionally with income categories. Instead, the spread shows that yearly earnings capture 
+                    only one part of a household’s financial position. This view highlights that income reflects what flows in each 
+                    year, while wealth reflects what accumulates over many years.
+                `;
+                map_title.textContent = "Distribution of Wealth by Income";
+                updateDots(incomeData);
+            };
+
+            btnGen.onclick = () => {
+                setActive("#btnGen");
+                description.innerHTML = `
+                    <strong>Looking at generations shifts the story from individual circumstances to broader historical 
+                    patterns.</strong> Each generation entered adulthood under different economic conditions, shaping the 
+                    opportunities available to build and maintain wealth. Even though there are reasonably similar numbers of 
+                    Americans within the Baby Boomer, Gen X, and Millenial generations, their share of wealth are drastically
+                    different. The resulting distribution doesn't resemble the patterns of education, age, or income. It reflects 
+                    the influence of economic eras, major shifts in policy, housing markets, and financial systems. This nuanced 
+                    view shows that wealth is not only personal but also contextual.
+                `;
                 map_title.textContent = "Distribution of Wealth by Generation";
                 updateDots(generationData);
+            };
+
+            btnRace.onclick = () => {
+                setActive("#btnRace");
+                description.innerHTML = `
+                    <strong>Examining wealth by racial groups reveals yet another pattern that reshapes our understanding 
+                        of the data.</strong> Unlike the previous categories, this distribution reflects long-term demographic 
+                        trends rather than life stages or income levels. For example, white Americans make up approximately 60%
+                        of the U.S. population but hold over 84% of the country's wealth, setting them at a clearly disproportionate
+                        advantage. Meanwhile, black Americans make up approximately 14% of the population but hold around 4% of the
+                        country's wealth. The differences across racial groups highlight how identity contributes to national 
+                        wealth shares and demonstrate that multiple identity and contextual factors push individuals into different
+                        wealth opportunities. 
+                `;
+                map_title.textContent = "Distribution of Wealth by Race";
+                updateDots(raceData);
+            };
+
+            btnNW.onclick = () => {
+                setActive("#btnNW");
+                description.innerHTML = `
+                    <strong>With all perspectives in mind, the net worth view brings the entire story into focus.</strong>
+                    Unlike the earlier dimensions, which revealed different slices of the population, this distribution shows 
+                    the full structure of wealth in the U.S. at once. The orange dots display the wealth share of the top 50%
+                    and the corresponding top 10% and 1%, while the blue demonstrates the wealth of the bottom 50%. We can clearly
+                    see how concentrated national wealth has become, with a small share of households holding a disproportionately 
+                    large portion of the total. Therefore, by moving through each demographic lens and ending here, the visualization 
+                    reveals how complex and interconnected the drivers of wealth truly are far beyond any single variable: Every part 
+                    of an American's identity matters and influences how they are set up to hold wealth in America.
+                `;
+                map_title.textContent = "Distribution of Wealth by Net Worth";
+                updateDots(networthData);
             };
 
         </script>
