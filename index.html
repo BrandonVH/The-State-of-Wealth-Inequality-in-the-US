@@ -386,6 +386,12 @@
                 const totalNetWorth = d3.sum(latestRows, d => d.NetWorth);
                 const categories = latestRows.map(d => d.Category);
                 const proportions = latestRows.map(d => d.NetWorth / totalNetWorth);
+                
+                // Create a map of category to percentage for tooltip
+                const categoryPercentages = new Map();
+                latestRows.forEach((row, idx) => {
+                    categoryPercentages.set(row.Category, proportions[idx]);
+                });
 
                 // 5. Color scale
                 let color;
@@ -466,10 +472,13 @@
                 // 11. Tooltip
                 svg.selectAll("circle")
                     .on("mousemove", (event, d) => {
+                        const label = getLabel(d.Category, dataset);
+                        const percentage = categoryPercentages.get(d.Category);
+                        const percentageText = percentage ? ` (${(percentage * 100).toFixed(1)}%)` : '';
                         tooltip.style("display", "block")
                             .style("left", event.pageX + "px")
                             .style("top", (event.pageY - 20) + "px")
-                            .text(getLabel(d.Category, dataset));
+                            .text(label + percentageText);
                     })
                     .on("mouseout", () => tooltip.style("display", "none"));
 
