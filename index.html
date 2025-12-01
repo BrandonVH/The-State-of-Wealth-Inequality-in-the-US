@@ -159,6 +159,7 @@
                 <button id="btnGen">Generation</button>
                 <button id="btnRace">Race</button>
                 <button id="btnNW">Net Worth</button>
+                <button id="btnNW1989">Net Worth (1989)</button>
             </div>
 
             <div id="tooltip" class="tooltip" style="display:none;"></div>
@@ -350,13 +351,30 @@
             first_draw();
 
 
-            function updateDots(dataset) {
+            function updateDots(dataset, targetYear = null) {
 
                 if (!dataset || dataset.length === 0) return;
 
-                // 1. Only use the latest date
-                const latestDate = d3.max(dataset, d => d.Date);
-                let latestRows = dataset.filter(d => d.Date === latestDate);
+                // 1. Use target year if specified, otherwise use latest date
+                let selectedRows;
+                if (targetYear) {
+                    // Find the first quarter of the target year (e.g., "1989:Q1" or "1989:Q3")
+                    const yearPattern = new RegExp(`^${targetYear}:`);
+                    const yearRows = dataset.filter(d => yearPattern.test(d.Date));
+                    if (yearRows.length > 0) {
+                        // Use the first available quarter of that year
+                        const firstQuarter = d3.min(yearRows, d => d.Date);
+                        selectedRows = dataset.filter(d => d.Date === firstQuarter);
+                    } else {
+                        // Fallback to latest if year not found
+                        const latestDate = d3.max(dataset, d => d.Date);
+                        selectedRows = dataset.filter(d => d.Date === latestDate);
+                    }
+                } else {
+                    const latestDate = d3.max(dataset, d => d.Date);
+                    selectedRows = dataset.filter(d => d.Date === latestDate);
+                }
+                let latestRows = selectedRows;
 
                 // 2. Parse Net worth as numeric
                 latestRows.forEach(d => {
@@ -397,16 +415,16 @@
                 let color;
 
                 if (dataset === networthData) {
-                    // Explicit colors for grouped net-worth categories
+                    // Explicit colors for grouped net-worth categories - using same palette as other visualizations
                     color = d3.scaleOrdinal()
                         .domain(categories)
                         .range(
                             categories.map(cat => {
-                                if (cat === "Top 1%")     return "#ff6a00";  // top 1% – darkest orange
-                                if (cat === "Next 9%")    return "#ffa600";  // next 9% – medium orange
-                                if (cat === "Next 40%")   return "#ffd080";  // next 40% – light orange
+                                if (cat === "Top 1%")     return "#d73027";  // top 1% – red
+                                if (cat === "Next 9%")    return "#1a9850";  // next 9% – green
+                                if (cat === "Next 40%")   return "#4575b4";  // next 40% – blue
 
-                                if (cat === "Bottom 50%") return "#336a99";  // bottom half – blue
+                                if (cat === "Bottom 50%") return "#fee08b";  // bottom half – cream
 
                                 return "#888888"; // fallback
                             })
@@ -580,6 +598,19 @@
                 `;
                 map_title.textContent = "Distribution of Wealth by Net Worth";
                 updateDots(networthData);
+            };
+
+            btnNW1989.onclick = () => {
+                setActive("#btnNW1989");
+                description.innerHTML = `
+                    <strong>Looking back to 1989, we can see how wealth distribution has changed over time.</strong>
+                    This historical view shows the net worth distribution at the earliest point in our dataset, allowing us to 
+                    compare how wealth concentration has evolved. The same color scheme applies: red for the top 1%, green for the 
+                    next 9%, blue for the next 40%, and cream for the bottom 50%. By comparing this view with the current net 
+                    worth distribution, we can observe the trends in wealth inequality over the past three decades.
+                `;
+                map_title.textContent = "Distribution of Wealth by Net Worth (1989)";
+                updateDots(networthData, "1989");
             };
 
         </script>
