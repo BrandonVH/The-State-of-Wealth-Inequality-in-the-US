@@ -107,6 +107,95 @@
             a {
                 color: #4da3ff;
             }
+
+            #year-controls {
+                display: none;
+                margin-top: 16px;
+                padding: 16px;
+                background: #1a1a1a;
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            }
+
+            #year-controls.active {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 12px;
+            }
+
+            #year-slider-container {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                width: 100%;
+                max-width: 600px;
+            }
+
+            #year-slider {
+                flex: 1;
+                height: 6px;
+                border-radius: 3px;
+                background: #333;
+                outline: none;
+                -webkit-appearance: none;
+            }
+
+            #year-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                background: #ff7a00;
+                cursor: pointer;
+            }
+
+            #year-slider::-moz-range-thumb {
+                width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                background: #ff7a00;
+                cursor: pointer;
+                border: none;
+                appearance: none;
+                -moz-appearance: none;
+            }
+
+            #year-display {
+                min-width: 80px;
+                text-align: center;
+                font-weight: 600;
+                color: #fff;
+            }
+
+            #play-controls {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+            }
+
+            #play-btn {
+                padding: 8px 16px;
+                border-radius: 6px;
+                border: none;
+                background: #333;
+                color: #eee;
+                cursor: pointer;
+                font-weight: 600;
+                border: 1px solid #555;
+                transition: 0.15s;
+            }
+
+            #play-btn:hover {
+                background: #444;
+            }
+
+            #play-btn.playing {
+                background: #ff7a00;
+                color: #000;
+                border-color: #ff7a00;
+            }
         </style>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
@@ -159,7 +248,16 @@
                 <button id="btnGen">Generation</button>
                 <button id="btnRace">Race</button>
                 <button id="btnNW">Net Worth</button>
-                <button id="btnNW1989">Net Worth (1989)</button>
+            </div>
+
+            <div id="year-controls">
+                <div id="year-slider-container">
+                    <span id="year-display">1989</span>
+                    <input type="range" id="year-slider" min="0" max="100" value="0" step="1">
+                </div>
+                <div id="play-controls">
+                    <button id="play-btn">▶ Play</button>
+                </div>
             </div>
 
             <div id="tooltip" class="tooltip" style="display:none;"></div>
@@ -203,6 +301,10 @@
             let cachedStates = null;
             let raceData, ageData, incomeData, networthData, educationData, generationData;
             let dataReady = false;
+            let networthYears = []; // Available years for net worth data
+            let currentYearIndex = 0;
+            let isPlaying = false;
+            let playInterval = null;
 
             const svg = d3.select("#map");
             const projection = d3.geoAlbersUsa();
@@ -252,6 +354,18 @@
                 networthData = networth;
                 educationData = education;
                 generationData = generation;
+
+                // Extract and sort unique years from networth data
+                const yearSet = new Set(networth.map(d => d.Date.split(':')[0]));
+                networthYears = Array.from(yearSet).sort((a, b) => parseInt(a) - parseInt(b));
+                
+                // Initialize slider
+                const yearSlider = document.getElementById("year-slider");
+                const yearDisplay = document.getElementById("year-display");
+                yearSlider.max = networthYears.length - 1;
+                yearSlider.value = 0; // Start at 1989 (earliest year)
+                currentYearIndex = 0;
+                updateYearDisplay();
 
                 dataReady = true;
                 console.log("All CSVs loaded successfully with Category column");
@@ -351,22 +465,36 @@
             first_draw();
 
 
-            function updateDots(dataset, targetYear = null) {
+            function updateDots(dataset, targetDate = null) {
 
                 if (!dataset || dataset.length === 0) return;
 
-                // 1. Use target year if specified, otherwise use latest date
+                // 1. Use target date/year if specified, otherwise use latest date
                 let selectedRows;
-                if (targetYear) {
-                    // Find the first quarter of the target year (e.g., "1989:Q1" or "1989:Q3")
-                    const yearPattern = new RegExp(`^${targetYear}:`);
-                    const yearRows = dataset.filter(d => yearPattern.test(d.Date));
-                    if (yearRows.length > 0) {
-                        // Use the first available quarter of that year
-                        const firstQuarter = d3.min(yearRows, d => d.Date);
-                        selectedRows = dataset.filter(d => d.Date === firstQuarter);
+                if (targetDate) {
+                    // Check if targetDate is a year (just digits) or a full date (contains colon)
+                    if (targetDate.includes(':')) {
+                        // It's a full date (e.g., "1989:Q3")
+                        selectedRows = dataset.filter(d => d.Date === targetDate);
                     } else {
-                        // Fallback to latest if year not found
+                        // It's a year (e.g., "1989")
+                        if (dataset === networthData) {
+                            // For net worth, filter all quarters for this year
+                            selectedRows = dataset.filter(d => d.Date.startsWith(targetDate + ':'));
+                        } else {
+                            // For other datasets, find first quarter of that year
+                            const yearPattern = new RegExp(`^${targetDate}:`);
+                            const yearRows = dataset.filter(d => yearPattern.test(d.Date));
+                            if (yearRows.length > 0) {
+                                const firstQuarter = d3.min(yearRows, d => d.Date);
+                                selectedRows = dataset.filter(d => d.Date === firstQuarter);
+                            } else {
+                                selectedRows = [];
+                            }
+                        }
+                    }
+                    if (selectedRows.length === 0) {
+                        // Fallback to latest if date/year not found
                         const latestDate = d3.max(dataset, d => d.Date);
                         selectedRows = dataset.filter(d => d.Date === latestDate);
                     }
@@ -390,14 +518,40 @@
                         "Bottom50": "Bottom 50%"
                     };
 
-                    const grouped = d3.rollups(
-                        latestRows,
-                        v => d3.sum(v, d => d.NetWorth),
-                        d => groupMap[d.Category]
-                    );
+                    // If we have multiple quarters (yearly average), average the values
+                    if (targetDate && !targetDate.includes(':')) {
+                        // First, sum by category within each quarter
+                        const byQuarter = d3.group(latestRows, d => d.Date);
+                        const quarterlySums = [];
+                        
+                        byQuarter.forEach((quarterRows, date) => {
+                            const quarterGrouped = d3.rollups(
+                                quarterRows,
+                                v => d3.sum(v, d => d.NetWorth),
+                                d => groupMap[d.Category]
+                            );
+                            quarterlySums.push(...quarterGrouped.map(([Category, NetWorth]) => ({ Category, NetWorth, Date: date })));
+                        });
+                        
+                        // Now average across quarters for each category
+                        const byCategory = d3.rollups(
+                            quarterlySums,
+                            v => d3.mean(v, d => d.NetWorth),
+                            d => d.Category
+                        );
+                        
+                        latestRows = byCategory.map(([Category, NetWorth]) => ({ Category, NetWorth }));
+                    } else {
+                        // Single quarter - just sum by category
+                        const grouped = d3.rollups(
+                            latestRows,
+                            v => d3.sum(v, d => d.NetWorth),
+                            d => groupMap[d.Category]
+                        );
 
-                    // Rebuild as simple array of {Category, NetWorth}
-                    latestRows = grouped.map(([Category, NetWorth]) => ({ Category, NetWorth }));
+                        // Rebuild as simple array of {Category, NetWorth}
+                        latestRows = grouped.map(([Category, NetWorth]) => ({ Category, NetWorth }));
+                    }
                 }
 
                 // 4. Compute totals, categories, proportions
@@ -505,14 +659,75 @@
             }
 
 
+            // YEAR CONTROLS FUNCTIONS
+            function updateYearDisplay() {
+                const yearDisplay = document.getElementById("year-display");
+                if (networthYears.length > 0 && currentYearIndex >= 0 && currentYearIndex < networthYears.length) {
+                    const year = networthYears[currentYearIndex];
+                    yearDisplay.textContent = year;
+                }
+            }
+
+            function updateVisualizationForYear() {
+                if (networthYears.length > 0 && currentYearIndex >= 0 && currentYearIndex < networthYears.length) {
+                    const selectedYear = networthYears[currentYearIndex];
+                    updateDots(networthData, selectedYear);
+                    map_title.textContent = `Distribution of Wealth by Net Worth (${selectedYear})`;
+                }
+            }
+
+            function togglePlay() {
+                const playBtn = document.getElementById("play-btn");
+                if (isPlaying) {
+                    // Stop playing
+                    clearInterval(playInterval);
+                    isPlaying = false;
+                    playBtn.textContent = "▶ Play";
+                    playBtn.classList.remove("playing");
+                } else {
+                    // Start playing
+                    isPlaying = true;
+                    playBtn.textContent = "⏸ Pause";
+                    playBtn.classList.add("playing");
+                    playInterval = setInterval(() => {
+                        if (currentYearIndex < networthYears.length - 1) {
+                            currentYearIndex++;
+                            const yearSlider = document.getElementById("year-slider");
+                            yearSlider.value = currentYearIndex;
+                            updateYearDisplay();
+                            updateVisualizationForYear();
+                        } else {
+                            // Reached the end, stop playing
+                            togglePlay();
+                        }
+                    }, 300); // Update every 300ms
+                }
+            }
+
             // BUTTON HANDLERS
             function setActive(btnId) {
                 document.querySelectorAll(".controls button").forEach(b => b.classList.remove("active"));
-                document.querySelector(btnId).classList.add("active");
+                if (btnId) {
+                    document.querySelector(btnId).classList.add("active");
+                }
+            }
+
+            function hideYearControls() {
+                const yearControls = document.getElementById("year-controls");
+                yearControls.classList.remove("active");
+                if (isPlaying) {
+                    togglePlay(); // Stop playing if switching away
+                }
+            }
+
+            function showYearControls() {
+                const yearControls = document.getElementById("year-controls");
+                yearControls.classList.add("active");
             }
 
             btnEdu.onclick = () => {
                 setActive("#btnEdu");
+                hideYearControls();
                 description.innerHTML = `
                     <strong>Many people begin with the belief that education neatly predicts financial outcomes.</strong>
                     Diplomas seem like clear markers of stability: high school, college, and graduate degrees appear to form 
@@ -528,10 +743,11 @@
 
             btnAge.onclick = () => {
                 setActive("#btnAge");
+                hideYearControls();
                 description.innerHTML = `
                 <strong>Age adds a natural progression to the story, since people typically build assets as they grow 
                 older.</strong> The data reveals this relationship is far from uniform. Younger and older groups hold vastly 
-                different shares of national wealth, and the distribution doesn’t mirror what we saw with education. This 
+                different shares of national wealth, and the distribution doesn't mirror what we saw with education. This 
                 contrast shows that wealth is shaped not just by personal achievements but by life stages, timing, and 
                 long-term financial cycles. As we move beyond age, the picture becomes even less predictable.
             `;
@@ -542,11 +758,12 @@
                 
             btnInc.onclick = () => {
                 setActive("#btnInc");
+                hideYearControls();
                 description.innerHTML = `
                     <strong>Income adds another familiar lens, since many assume higher earnings naturally lead to higher wealth.</strong>
                     But when we visualize the distribution, the pattern looks very different from what education or age suggested. 
                     Wealth does not rise proportionally with income categories. Instead, the spread shows that yearly earnings capture 
-                    only one part of a household’s financial position. This view highlights that income reflects what flows in each 
+                    only one part of a household's financial position. This view highlights that income reflects what flows in each 
                     year, while wealth reflects what accumulates over many years.
                 `;
                 map_title.textContent = "Distribution of Wealth by Income";
@@ -555,6 +772,7 @@
 
             btnGen.onclick = () => {
                 setActive("#btnGen");
+                hideYearControls();
                 description.innerHTML = `
                     <strong>Looking at generations shifts the story from individual circumstances to broader historical 
                     patterns.</strong> Each generation entered adulthood under different economic conditions, shaping the 
@@ -570,6 +788,7 @@
 
             btnRace.onclick = () => {
                 setActive("#btnRace");
+                hideYearControls();
                 description.innerHTML = `
                     <strong>Examining wealth by racial groups reveals yet another pattern that reshapes our understanding 
                         of the data.</strong> Unlike the previous categories, this distribution reflects long-term demographic 
@@ -586,32 +805,53 @@
 
             btnNW.onclick = () => {
                 setActive("#btnNW");
+                showYearControls();
                 description.innerHTML = `
                     <strong>With all perspectives in mind, the net worth view brings the entire story into focus.</strong>
                     Unlike the earlier dimensions, which revealed different slices of the population, this distribution shows 
-                    the full structure of wealth in the U.S. at once. The orange dots display the wealth share of the top 50%
-                    and the corresponding top 10% and 1%, while the blue demonstrates the wealth of the bottom 50%. We can clearly
-                    see how concentrated national wealth has become, with a small share of households holding a disproportionately 
-                    large portion of the total. Therefore, by moving through each demographic lens and ending here, the visualization 
-                    reveals how complex and interconnected the drivers of wealth truly are far beyond any single variable: Every part 
-                    of an American's identity matters and influences how they are set up to hold wealth in America.
+                    the full structure of wealth in the U.S. at once. Use the slider below to explore how wealth distribution 
+                    has changed over time from 1989 to the present. The play button will animate through the years automatically, 
+                    revealing the evolution of wealth inequality. The red dots represent the top 1%, green the next 9%, blue the 
+                    next 40%, and cream the bottom 50%. This visualization reveals how complex and interconnected the drivers of 
+                    wealth truly are far beyond any single variable: Every part of an American's identity matters and influences 
+                    how they are set up to hold wealth in America.
                 `;
-                map_title.textContent = "Distribution of Wealth by Net Worth";
-                updateDots(networthData);
+                // Reset to 1989 (earliest year)
+                if (networthYears.length > 0) {
+                    currentYearIndex = 0;
+                    const yearSlider = document.getElementById("year-slider");
+                    if (yearSlider) {
+                        yearSlider.value = 0;
+                    }
+                    updateYearDisplay();
+                    const selectedYear = networthYears[0];
+                    updateDots(networthData, selectedYear);
+                    map_title.textContent = `Distribution of Wealth by Net Worth (${selectedYear})`;
+                } else {
+                    updateDots(networthData);
+                    map_title.textContent = "Distribution of Wealth by Net Worth";
+                }
             };
 
-            btnNW1989.onclick = () => {
-                setActive("#btnNW1989");
-                description.innerHTML = `
-                    <strong>Looking back to 1989, we can see how wealth distribution has changed over time.</strong>
-                    This historical view shows the net worth distribution at the earliest point in our dataset, allowing us to 
-                    compare how wealth concentration has evolved. The same color scheme applies: red for the top 1%, green for the 
-                    next 9%, blue for the next 40%, and cream for the bottom 50%. By comparing this view with the current net 
-                    worth distribution, we can observe the trends in wealth inequality over the past three decades.
-                `;
-                map_title.textContent = "Distribution of Wealth by Net Worth (1989)";
-                updateDots(networthData, "1989");
-            };
+            // YEAR CONTROLS EVENT LISTENERS
+            const yearSlider = document.getElementById("year-slider");
+            const playBtn = document.getElementById("play-btn");
+
+            if (yearSlider) {
+                yearSlider.addEventListener("input", (e) => {
+                    currentYearIndex = parseInt(e.target.value);
+                    updateYearDisplay();
+                    updateVisualizationForYear();
+                    // Stop playing if user manually moves slider
+                    if (isPlaying) {
+                        togglePlay();
+                    }
+                });
+            }
+
+            if (playBtn) {
+                playBtn.addEventListener("click", togglePlay);
+            }
 
         </script>
 
