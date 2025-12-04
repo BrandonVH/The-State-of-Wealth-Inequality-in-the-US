@@ -196,6 +196,46 @@
                 color: #000;
                 border-color: #ff7a00;
             }
+
+            /* Left/right navigation buttons beside the map */
+            .nav-arrow {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 42px;
+                height: 42px;
+                background: #333;
+                border: 1px solid #555;
+                border-radius: 50%;
+                color: #eee;
+                font-size: 20px;
+                font-weight: bold;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: 0.2s;
+                z-index: 20;
+            }
+
+            .nav-arrow:hover {
+                background: #444;
+            }
+
+            #nav-left {
+                left: 12px;
+            }
+
+            #nav-right {
+                right: 12px;
+            }
+
+            #map-container {
+                position: relative;
+                width: 100%;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
         </style>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
@@ -210,13 +250,13 @@
         <div style="padding-bottom: 20px; max-width: 800px; margin: 0 auto; line-height: 1.5; padding-top: 30px;">
 
             <div id="description">
-                When it comes to the "American Dream", we often talk as if every American is afforded the same opportunities and 
+                <!-- When it comes to the "American Dream", we often talk as if every American is afforded the same opportunities and 
                 potential. On the surface, the U.S. economy appears prosperous and fair, with the meritocractic belief that hard
                 work alone can secure success. When most people imagine wealth distribution, they believe in fairness and fail to 
                 understand how dramatically unbalanced it truly is. Once we break differences down by race, age, income, education, 
                 and generation, we can begin to understand all the facets and patterns of wealth inequality. This visualization 
                 uses 1,000 dots to visually allocate American wealth into demographic groups by color. Our project aims to make 
-                complex economic inequality data accessible, visual, and meaningful for a general audience.
+                complex economic inequality data accessible, visual, and meaningful for a general audience. -->
             </div>
         </div>
 
@@ -228,10 +268,15 @@
                 box-shadow: 0 6px 18px rgba(0,0,0,0.8);
                 background: #1a1a1a;
             ">
-                Click the “Education” button below to begin exploring how wealth is actually distributed in the United States.
+                <!-- Click the “Education” button below to begin exploring how wealth is actually distributed in the United States. -->
             </div>
 
-            <svg id="map"></svg>
+            <div id="map-container">
+                <button class="nav-arrow" id="nav-left">‹</button>
+                <txt id="transition-text"></txt>
+                <svg id="map"></svg>
+                <button class="nav-arrow" id="nav-right">›</button>
+            </div>
 
             <div id="legend" style="
                 justify-content: center;
@@ -242,12 +287,19 @@
             "></div>
 
             <div class="controls" style="justify-content: center; width: 100%;">
+                <button id="btn0">Introduction</button>
                 <button id="btnEdu">Education</button>
+                <button id="btn1">1</button>
                 <button id="btnAge">Age</button>
+                <button id="btn2">2</button>
                 <button id="btnInc">Income</button>
+                <button id="btn3">3</button>
                 <button id="btnGen">Generation</button>
+                <button id="btn4">4</button>
                 <button id="btnRace">Race</button>
+                <button id="btn5">5</button>
                 <button id="btnNW">Net Worth</button>
+                <button id="btn6">Takeaway</button>
             </div>
 
             <div id="year-controls">
@@ -262,6 +314,7 @@
 
             <div id="tooltip" class="tooltip" style="display:none;"></div>
 
+            <!--
             <section id="writeup" style="max-width: 900px; margin: 40px auto; line-height: 1.6; padding: 20px;">
                 <h3>1. What have you done so far?</h3>
                 <p>
@@ -285,6 +338,7 @@
                     leading to misinterpretation.
                 </p>
             </section>
+            -->
 
             <footer>
                 Data sourced from
@@ -454,7 +508,7 @@
                             .attr("class", "circle")
                             .attr("cx", d => projection([d.lon, d.lat])[0])
                             .attr("cy", d => projection([d.lon, d.lat])[1])
-                            .attr("fill", "#6fa3d6")
+                            .attr("fill", "#888888")
                             .attr("r", 0)
                             .transition()
                             .duration(400)
@@ -706,6 +760,7 @@
 
             // BUTTON HANDLERS
             function setActive(btnId) {
+                currentViewIndex = datasetOrder.findIndex(d => d.btn === btnId);
                 document.querySelectorAll(".controls button").forEach(b => b.classList.remove("active"));
                 if (btnId) {
                     document.querySelector(btnId).classList.add("active");
@@ -725,7 +780,7 @@
                 yearControls.classList.add("active");
             }
 
-            btnEdu.onclick = () => {
+            document.getElementById("btnEdu").onclick = () => {
                 setActive("#btnEdu");
                 hideYearControls();
                 description.innerHTML = `
@@ -735,13 +790,12 @@
                     becomes more complex. Even though additional schooling is associated with higher earnings, the wealth 
                     that households hold varies far more widely than expected. This first view suggests that education 
                     matters, but it is only the starting point for understanding how wealth actually accumulates in the U.S.
-
-            `;
+                `;
                 map_title.textContent = "Distribution of Wealth by Education";
                 updateDots(educationData);
             };
 
-            btnAge.onclick = () => {
+            document.getElementById("btnAge").onclick = () => {
                 setActive("#btnAge");
                 hideYearControls();
                 description.innerHTML = `
@@ -750,13 +804,12 @@
                 different shares of national wealth, and the distribution doesn't mirror what we saw with education. This 
                 contrast shows that wealth is shaped not just by personal achievements but by life stages, timing, and 
                 long-term financial cycles. As we move beyond age, the picture becomes even less predictable.
-            `;
+                `;
                 map_title.textContent = "Distribution of Wealth by Age";
                 updateDots(ageData);
             };
 
-                
-            btnInc.onclick = () => {
+            document.getElementById("btnInc").onclick = () => {
                 setActive("#btnInc");
                 hideYearControls();
                 description.innerHTML = `
@@ -770,7 +823,7 @@
                 updateDots(incomeData);
             };
 
-            btnGen.onclick = () => {
+            document.getElementById("btnGen").onclick = () => {
                 setActive("#btnGen");
                 hideYearControls();
                 description.innerHTML = `
@@ -786,7 +839,7 @@
                 updateDots(generationData);
             };
 
-            btnRace.onclick = () => {
+            document.getElementById("btnRace").onclick = () => {
                 setActive("#btnRace");
                 hideYearControls();
                 description.innerHTML = `
@@ -803,7 +856,7 @@
                 updateDots(raceData);
             };
 
-            btnNW.onclick = () => {
+            document.getElementById("btnNW").onclick = () => {
                 setActive("#btnNW");
                 showYearControls();
                 description.innerHTML = `
@@ -833,6 +886,178 @@
                 }
             };
 
+            // --- INTRO & TRANSITION BUTTONS (0–6) ---
+            document.getElementById("btn0").onclick = () => {
+                setActive("#btn0");
+                hideYearControls();
+                description.innerHTML = `
+                    <strong>When it comes to the "American Dream", we often talk as if every American is afforded the same opportunities and 
+                    potential.</strong> On the surface, the U.S. economy appears prosperous and fair, with the meritocractic belief that hard
+                    work alone can secure success. When most people imagine wealth distribution, they believe in fairness and fail to 
+                    understand how dramatically unbalanced it truly is. Once we break differences down by race, age, income, education, 
+                    and generation, we can begin to understand all the facets and patterns of wealth inequality. This visualization 
+                    uses 1,000 dots to visually allocate American wealth into demographic groups by color. Our project aims to make 
+                    complex economic inequality data accessible, visual, and meaningful for a general audience.
+                `;
+                map_title.textContent = "Introduction";
+
+                svg.selectAll("circle")
+                    .transition()
+                    .duration(400)
+                    .attr("fill", "#888888");
+
+                d3.select("#legend").selectAll("*").remove();
+            };
+
+            document.getElementById("btn1").onclick = () => {
+                setActive("#btn1");
+                hideYearControls();
+                description.innerHTML = `
+                    <strong>We’ve looked at how education affects wealth.</strong>
+                    But education alone doesn't explain why inequality looks the way it does. 
+                    Let’s keep exploring other dimensions to see how the patterns shift.
+                `;
+                map_title.textContent = "Transition";
+
+                svg.selectAll("circle")
+                    .transition()
+                    .duration(400)
+                    .attr("fill", "#888888");
+
+                d3.select("#legend").selectAll("*").remove();
+            };
+
+            document.getElementById("btn2").onclick = () => {
+                setActive("#btn2");
+                hideYearControls();
+                description.innerHTML = `
+                    <strong>Income paints a different picture from both education and age.</strong>
+                    Now we'll move forward to see how generational differences reshape our understanding
+                    of wealth distribution in America.
+                `;
+                map_title.textContent = "Transition";
+
+                svg.selectAll("circle")
+                    .transition()
+                    .duration(400)
+                    .attr("fill", "#888888");
+
+                d3.select("#legend").selectAll("*").remove();
+            };
+
+            document.getElementById("btn3").onclick = () => {
+                setActive("#btn3");
+                hideYearControls();
+                description.innerHTML = `
+                    <strong>Generational trends show us that economic timing matters.</strong>
+                    But identity matters too. Now let's examine how wealth breaks down across racial groups.
+                `;
+                map_title.textContent = "Transition";
+
+                svg.selectAll("circle")
+                    .transition()
+                    .duration(400)
+                    .attr("fill", "#888888");
+
+                d3.select("#legend").selectAll("*").remove();
+            };
+
+            document.getElementById("btn4").onclick = () => {
+                setActive("#btn4");
+                hideYearControls();
+                description.innerHTML = `
+                    <strong>Race reveals some of the most dramatic differences in the data.</strong>
+                    Next, we will bring all perspectives together by looking at overall net worth distribution.
+                `;
+                map_title.textContent = "Transition";
+
+                svg.selectAll("circle")
+                    .transition()
+                    .duration(400)
+                    .attr("fill", "#888888");
+
+                d3.select("#legend").selectAll("*").remove();
+            };
+
+            document.getElementById("btn5").onclick = () => {
+                setActive("#btn5");
+                hideYearControls();
+                description.innerHTML = `
+                    <strong>The net worth view showed us the structure of wealth inequality directly.</strong>
+                    Now let's move toward concluding insights about what these patterns tell us.
+                `;
+                map_title.textContent = "Transition";
+
+                svg.selectAll("circle")
+                    .transition()
+                    .duration(400)
+                    .attr("fill", "#888888");
+
+                d3.select("#legend").selectAll("*").remove();
+            };
+
+            document.getElementById("btn6").onclick = () => {
+                setActive("#btn6");
+                hideYearControls();
+                description.innerHTML = `
+                    <strong>What do all these categories show us?</strong><br>
+                    That wealth inequality is the product of many overlapping forces — education, age, 
+                    income, generation, and race all interact, compounding advantages for some groups 
+                    while limiting opportunities for others.
+                `;
+                map_title.textContent = "Takeaway";
+
+                // Select all circles
+                const circles = svg.selectAll("circle").nodes();
+
+                // Sort by x-position (left to right)
+                circles.sort((a, b) => +a.getAttribute("cx") - +b.getAttribute("cx"));
+
+                const totalDots = circles.length;
+                const redCount = Math.max(1, Math.round(totalDots * 0.01)); // 1% of total
+
+                // Apply fill colors with transition
+                circles.forEach((circle, i) => {
+                    d3.select(circle)
+                    .transition()
+                    .duration(400)
+                    .attr("fill", i < redCount ? "#d73027" : "#1a9850");
+                });
+
+                // Clear legend
+                d3.select("#legend").selectAll("*").remove();
+
+                const entries = [
+                    { color: "#d73027", label: "Top 1%" },
+                    { color: "#1a9850", label: "Remaining 99%" }
+                ];
+
+                const legend = document.getElementById("legend");
+                legend.innerHTML = "";
+
+                entries.forEach(cat => {
+                    const item = document.createElement("div");
+                    item.style.display = "flex";
+                    item.style.alignItems = "center";
+                    item.style.gap = "6px";
+
+                    const swatch = document.createElement("div");
+                    swatch.style.width = "14px";
+                    swatch.style.height = "14px";
+                    swatch.style.borderRadius = "3px";
+                    swatch.style.backgroundColor = cat.color;
+                    swatch.style.border = "1px solid rgba(0,0,0,0.3)";
+
+                    const label = document.createElement("span");
+                    label.style.fontSize = "13px";
+                    label.textContent = cat.label;
+
+                    item.appendChild(swatch);
+                    item.appendChild(label);
+                    legend.appendChild(item);
+                });
+            };
+
             // YEAR CONTROLS EVENT LISTENERS
             const yearSlider = document.getElementById("year-slider");
             const playBtn = document.getElementById("play-btn");
@@ -852,6 +1077,83 @@
             if (playBtn) {
                 playBtn.addEventListener("click", togglePlay);
             }
+
+            // ORDER of datasets shown by arrows
+            const datasetOrder = [
+                { btn: "#btn0", title: "Intro" }, // TODO
+
+                { btn: "#btnEdu", title: "Distribution of Wealth by Education" },
+
+                { btn: "#btn1", title: "Transition 1" }, // TODO
+
+                { btn: "#btnAge", title: "Distribution of Wealth by Age" },
+
+                { btn: "#btn2", title: "Transition 2" }, // TODO
+
+                { btn: "#btnInc", title: "Distribution of Wealth by Income" },
+
+                { btn: "#btn3", title: "Transition 3" }, // TODO
+
+                { btn: "#btnGen", title: "Distribution of Wealth by Generation" },
+
+                { btn: "#btn4", title: "Transition 4" }, // TODO
+
+                { btn: "#btnRace", title: "Distribution of Wealth by Race" },
+
+                { btn: "#btn5", title: "Transition 5" }, // TODO
+
+                { btn: "#btnNW", title: "Distribution of Wealth by Net Worth" },
+
+                { btn: "#btn6", title: "Takeaway" } // TODO
+            ];
+
+            let currentViewIndex = null;
+
+            function updateViewFromArrows(indexChange) {
+                if (currentViewIndex === null){
+                    currentViewIndex = indexChange === 1 ? 0 : datasetOrder.length - 1;
+                }
+                else{
+                    currentViewIndex = (currentViewIndex + indexChange + datasetOrder.length) % datasetOrder.length;
+                }
+
+                const entry = datasetOrder[currentViewIndex];
+                const btn = document.querySelector(entry.btn);
+
+                btn.click(); // trigger existing behavior
+            }
+
+            // Arrow click listeners
+            document.getElementById("nav-left").onclick = () => updateViewFromArrows(-1);
+            document.getElementById("nav-right").onclick = () => updateViewFromArrows(1);
+
+            function showCenteredDescription(descHTML) {
+                // 1. Hide the SVG
+                d3.select("#map").style("display", "none");
+
+                // 2. Remove any existing centered text
+                d3.select("#map-container").selectAll(".centered-text").remove();
+
+                // 3. Append new centered text
+                d3.select("#map-container")
+                .append("div")
+                .attr("class", "centered-text")
+                .html(descHTML);
+            }
+
+            function hideCenteredDescription() {
+                // Show SVG again
+                d3.select("#map").style("display", "block");
+
+                // Remove centered text
+                d3.select("#map-container").selectAll(".centered-text").remove();
+            }
+
+
+            // BUTTON 0 SHOULD BE AUTOMATICALLY CLICKED WHEN PAGE LOADS
+            btn0 = document.getElementById("btn0")
+            btn0.click() 
+
 
         </script>
 
