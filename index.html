@@ -1093,53 +1093,65 @@
 
                 hideYearControls();
 
-                // 1. Show map container normally, but hide dots
-                const mapContainer = document.getElementById("map-container");
-                mapContainer.classList.remove("hidden");
-                svg.selectAll("circle").attr("visibility", "hidden");
-                svg.style("background", "#1a1a1a");
-
-                // 2. Clear legend + title
-                d3.select("#legend").selectAll("*").remove();
-                map_title.textContent = "";
-
-                // 3. Fill overlay with takeaways
-                const overlay = document.getElementById("takeaway-overlay");
-                overlay.innerHTML = `
-                    <div style="max-width:700px; margin:auto;">
-                        <h2 style="margin-top:0; margin-bottom:12px;">Final Takeaways</h2>
-
-                        <p>
-                            Wealth in the United States does not accumulate evenly. Each category we explored —
-                            education, age, income, generation, and race — reveals a different structural pattern
-                            of how opportunity and history shape who holds wealth.
-                        </p>
-
-                        <p>
-                            These forces don’t act alone. They interact and reinforce each other, creating 
-                            advantages for some groups while limiting mobility for others. Over time, these 
-                            compounded differences produce the extreme wealth concentration we see today.
-                        </p>
-
-                        <p>
-                            Understanding wealth inequality requires looking beyond income or individual effort. 
-                            It requires acknowledging how policy, generational timing, and identity influence 
-                            who is positioned to build wealth.
-                        </p>
-
-                        <p>
-                            This visualization makes those patterns visible — not just as numbers, but as the 
-                            system shaping every household and every generation.
-                        </p>
-
-                        <p style="opacity:0.8; font-size:14px; margin-top:18px;">
-                            Use the arrows or buttons below to revisit any category.
-                        </p>
-                    </div>
+                description.innerHTML = `
+                    <strong>What does this visualization ultimately show?</strong><br>
+                    Across all of the views, a consistent pattern emerges: the top 1% makes up a very small share of the population, 
+                    yet holds roughly 30% of the country’s total wealth. In the net worth view, the red dots representing the top 1% 
+                    regularly account for about one-third of national wealth, while the remaining 99% of Americans share everything 
+                    that is left. This gap is much larger than what many people imagine when they think about the “American Dream.”
+                    <br><br>
+                    Taken together, the different dimensions in our visualization such as education, age, income, generation, and race
+                    show that wealth inequality is built up over time through overlapping advantages and barriers. The takeaway is 
+                    that a very small group starts with and maintains a highly concentrated share of wealth, while most households 
+                    are competing over a much smaller portion of the economic pie.
                 `;
+                map_title.textContent = "Takeaway";
 
-                // 4. Show the overlay
-                overlay.style.display = "flex";
+                const circles = svg.selectAll("circle").nodes();
+
+                circles.sort((a, b) => +a.getAttribute("cx") - +b.getAttribute("cx"));
+
+                const totalDots = circles.length;
+                const redCount = Math.max(1, Math.round(totalDots * 0.01)); // 1%
+
+                circles.forEach((circle, i) => {
+                    d3.select(circle)
+                    .transition()
+                    .duration(400)
+                    .attr("fill", i < redCount ? "#d73027" : "#1a9850");
+                });
+
+                d3.select("#legend").selectAll("*").remove();
+
+                const entries = [
+                    { color: "#d73027", label: "Top 1%" },
+                    { color: "#1a9850", label: "Remaining 99%" }
+                ];
+
+                const legend = document.getElementById("legend");
+                legend.innerHTML = "";
+
+                entries.forEach(cat => {
+                    const item = document.createElement("div");
+                    item.style.display = "flex";
+                    item.style.alignItems = "center";
+                    item.style.gap = "6px";
+
+                    const swatch = document.createElement("div");
+                    swatch.style.width = "14px";
+                    swatch.style.height = "14px";
+                    swatch.style.borderRadius = "3px";
+                    swatch.style.backgroundColor = cat.color;
+                    swatch.style.border = "1px solid rgba(0,0,0,0.3)";
+
+                    const label = document.createElement("span");
+                    label.style.fontSize = "13px";
+                    label.textContent = cat.label;
+
+                    item.appendChild(swatch);
+                    item.appendChild(label);
+                    legend.appendChild(item);
+                });
 
             };
 
