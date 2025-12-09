@@ -860,12 +860,12 @@
                 description.innerHTML = `
                     <h2 style="margin-top:0;">Welcome</h2>
                     <p>
-                        This interactive visualization explores how wealth is distributed in the United States.
-                        Use the arrows or the buttons below to move through categories and see how education,
-                        age, income, generation, and race each shape the structure of inequality.
+                        This interactive map shows how wealth is actually distributed across the United States. 
+                        Move through each category (education, age, income, generation, and race) to see how 
+                        different groups hold sharply different shares of the nation’s wealth.
                     </p>
                     <p>
-                        Click or press the right arrow to begin.
+                        Use the arrows or buttons below to navigate.
                     </p>
                 `;
 
@@ -889,12 +889,10 @@
 
 
                 description.innerHTML = `
-                    <strong>Many people begin with the belief that education neatly predicts financial outcomes.</strong>
-                    Diplomas seem like clear markers of stability: high school, college, and graduate degrees appear to form 
-                    a simple ladder of economic mobility. Yet when we map wealth across educational groups, the pattern 
-                    becomes more complex. Even though additional schooling is associated with higher earnings, the wealth 
-                    that households hold varies far more widely than expected. This first view suggests that education 
-                    matters, but it is only the starting point for understanding how wealth actually accumulates in the U.S.
+                    <strong>Education shapes opportunity, but it doesn’t guarantee wealth.</strong>
+                    Households with more schooling generally earn more, but their wealth varies far more than 
+                    expected. Even among people with similar degrees, the gap between who builds wealth and who 
+                    doesn’t is surprisingly wide. There's more layers to understanding wealth distribution than we may think.
                 `;
                 map_title.textContent = "Distribution of Wealth by Education";
                 updateDots(educationData);
@@ -914,11 +912,10 @@
 
 
                 description.innerHTML = `
-                <strong>Age adds a natural progression to the story, since people typically build assets as they grow 
-                older.</strong> The data reveals this relationship is far from uniform. Younger and older groups hold vastly 
-                different shares of national wealth, and the distribution doesn't mirror what we saw with education. This 
-                contrast shows that wealth is shaped not just by personal achievements but by life stages, timing, and 
-                long-term financial cycles. As we move beyond age, the picture becomes even less predictable.
+                <strong>Does wealth always grow with age?</strong>
+                Older Americans usually hold more wealth, but the spread across age groups is larger than 
+                most people imagine. Timing, economic cycles, and recessions create big differences 
+                between generations at the same life stage.
                 `;
                 map_title.textContent = "Distribution of Wealth by Age";
                 updateDots(ageData);
@@ -942,11 +939,9 @@
 
 
                 description.innerHTML = `
-                    <strong>Income adds another familiar lens, since many assume higher earnings naturally lead to higher wealth.</strong>
-                    But when we visualize the distribution, the pattern looks very different from what education or age suggested. 
-                    Wealth does not rise proportionally with income categories. Instead, the spread shows that yearly earnings capture 
-                    only one part of a household's financial position. This view highlights that income reflects what flows in each 
-                    year, while wealth reflects what accumulates over many years.
+                    <strong>Income isn’t the same as wealth.</strong>
+                    Higher earners don’t always end up wealthier, and wealth doesn’t rise in a clean staircase 
+                    as income goes up. Yearly paychecks help us understand distribution, but it doesn't show the full story.
                 `;
                 map_title.textContent = "Distribution of Wealth by Income";
                 updateDots(incomeData);
@@ -970,13 +965,11 @@
 
 
                 description.innerHTML = `
-                    <strong>Looking at generations shifts the story from individual circumstances to broader historical 
-                    patterns.</strong> Each generation entered adulthood under different economic conditions, shaping the 
-                    opportunities available to build and maintain wealth. Even though there are reasonably similar numbers of 
-                    Americans within the Baby Boomer, Gen X, and Millenial generations, their share of wealth are drastically
-                    different. The resulting distribution doesn't resemble the patterns of education, age, or income. It reflects 
-                    the influence of economic eras, major shifts in policy, housing markets, and financial systems. This nuanced 
-                    view shows that wealth is not only personal but also contextual.
+                    <strong>When you were born matters almost as much as what you earn.</strong>
+                    Each generation entered adulthood in a different economic moment with different housing 
+                    prices, interest rates, job markets, and policies. These historical advantages and setbacks 
+                    shape wealth more than personal choices alone.
+
                 `;
                 map_title.textContent = "Distribution of Wealth by Generation";
                 updateDots(generationData);
@@ -999,14 +992,10 @@
 
 
                 description.innerHTML = `
-                    <strong>Examining wealth by racial groups reveals yet another pattern that reshapes our understanding 
-                        of the data.</strong> Unlike the previous categories, this distribution reflects long-term demographic 
-                        trends rather than life stages or income levels. For example, white Americans make up approximately 60%
-                        of the U.S. population but hold over 84% of the country's wealth, setting them at a clearly disproportionate
-                        advantage. Meanwhile, black Americans make up approximately 14% of the population but hold around 4% of the
-                        country's wealth. The differences across racial groups highlight how identity contributes to national 
-                        wealth shares and demonstrate that multiple identity and contextual factors push individuals into different
-                        wealth opportunities. 
+                    <strong>Race reveals some of the greatest divides in American wealth.</strong>
+                    Long-standing policies and structural barriers have created systemic gaps in who holds wealth. 
+                    Even groups with similar education or income levels show dramatically different outcomes due to 
+                    inequitable opportunity and privilege. 
                 `;
                 map_title.textContent = "Distribution of Wealth by Race";
                 updateDots(raceData);
@@ -1029,14 +1018,11 @@
 
 
                 description.innerHTML = `
-                    <strong>With all perspectives in mind, the net worth view brings the entire story into focus.</strong>
-                    Unlike the earlier dimensions, which revealed different slices of the population, this distribution shows 
-                    the full structure of wealth in the U.S. at once. Use the slider below to explore how wealth distribution 
-                    has changed over time from 1989 to the present. The play button will animate through the years automatically, 
-                    revealing the evolution of wealth inequality. The red dots represent the top 1%, green the next 9%, blue the 
-                    next 40%, and cream the bottom 50%. This visualization reveals how complex and interconnected the drivers of 
-                    wealth truly are far beyond any single variable: Every part of an American's identity matters and influences 
-                    how they are set up to hold wealth in America.
+                    <strong>Here’s the full wealth structure of the United States.</strong>
+                    This view shows how much of the nation’s total wealth belongs to the top 1%, the next 9%, 
+                    the middle 40%, and the bottom 50%. Use the slider to watch how this distribution has 
+                    shifted — or stayed stubbornly consistent — over the past several decades.
+
                 `;
 
                 if (networthYears.length > 0) {
@@ -1096,14 +1082,12 @@
                 description.innerHTML = `
                     <strong>What does this visualization ultimately show?</strong><br>
                     Across all of the views, a consistent pattern emerges: the top 1% makes up a very small share of the population, 
-                    yet holds roughly 30% of the country’s total wealth. In the net worth view, the red dots representing the top 1% 
-                    regularly account for about one-third of national wealth, while the remaining 99% of Americans share everything 
-                    that is left. This gap is much larger than what many people imagine when they think about the “American Dream.”
+                    yet holds roughly 30% of the country’s total wealth. This gap is much larger than what many people imagine when they think about the “American Dream.”
                     <br><br>
                     Taken together, the different dimensions in our visualization such as education, age, income, generation, and race
-                    show that wealth inequality is built up over time through overlapping advantages and barriers. The takeaway is 
-                    that a very small group starts with and maintains a highly concentrated share of wealth, while most households 
-                    are competing over a much smaller portion of the economic pie.
+                    show that wealth inequality is built up over time through overlapping advantages and barriers. The result is a system where a small share of households hold a 
+                    disproportionately large share of the nation’s wealth, while most families split the smaller portion that remains. Understanding these factors
+                    helps us understand how to work towards a more equitable wealth distribution and system.
                 `;
                 map_title.textContent = "Takeaway";
 
