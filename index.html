@@ -258,6 +258,13 @@
                 line-height: 1.5;
             }
 
+            #map-container.hidden {
+                height: 0 !important;
+                overflow: hidden;
+                margin-top: 0;
+            }
+
+
         </style>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
@@ -289,6 +296,23 @@
             <svg id="map"></svg>
             <button class="nav-arrow" id="nav-right">›</button>
         </div>
+        <div id="takeaway-overlay"
+            style="
+                position:absolute;
+                inset:0;
+                display:none;
+                align-items:center;
+                justify-content:center;
+                padding:40px;
+                text-align:left;
+                color:white;
+                font-size:16px;
+                line-height:1.6;
+                background:rgba(0,0,0,0.0);
+                z-index:50;
+            ">
+        </div>
+
 
         <div id="legend" style="
                 justify-content: center;
@@ -355,6 +379,8 @@
             const popupContentEl = document.getElementById("popup-content");
             let popupOpen = false;
             let introPopupShown = false; 
+
+            const takeawayOverlay = document.getElementById("takeaway-overlay");
 
 
             function openPopup(html) {
@@ -812,24 +838,38 @@
                 currentMainView = "intro";
                 setActive("#btn0");
                 hideYearControls();
+                takeawayOverlay.style.display = "none";
 
-                // Remove text entirely
-                description.innerHTML = "";
-                map_title.textContent = "";
+                // Restore map container layout (fixes weird blank formatting)
+                document.getElementById("map-container").classList.remove("hidden");
 
-                // Hide ALL circles so no gray map appears
+                // Hide all dots
                 svg.selectAll("circle")
                     .transition()
                     .duration(200)
                     .attr("visibility", "hidden");
 
-                // Clear legend
+                // Remove legend + title
                 d3.select("#legend").selectAll("*").remove();
+                map_title.textContent = "";
 
-                // Optional: fade the whole SVG background darker (if you want a cleaner intro)
-                svg.style("background", "none");
+                // Reset background so it's not awkwardly dark/empty
+                svg.style("background", "#1a1a1a");
 
-                // Show intro popup only once
+                // Add simple intro welcome text
+                description.innerHTML = `
+                    <h2 style="margin-top:0;">Welcome</h2>
+                    <p>
+                        This interactive visualization explores how wealth is distributed in the United States.
+                        Use the arrows or the buttons below to move through categories and see how education,
+                        age, income, generation, and race each shape the structure of inequality.
+                    </p>
+                    <p>
+                        Click or press the right arrow to begin.
+                    </p>
+                `;
+
+                // Show intro popup once
                 if (!introPopupShown) {
                     openPopup(introPopupHTML);
                     introPopupShown = true;
@@ -837,14 +877,16 @@
             };
 
 
-
-
             // EDUCATION
             document.getElementById("btnEdu").onclick = () => {
                 const prev = currentMainView;
                 currentMainView = "edu";
                 setActive("#btnEdu");
+                document.getElementById("takeaway-overlay").style.display = "none";
                 hideYearControls();
+                takeawayOverlay.style.display = "none";
+                document.getElementById("map-container").classList.remove("hidden");
+
 
                 description.innerHTML = `
                     <strong>Many people begin with the belief that education neatly predicts financial outcomes.</strong>
@@ -864,7 +906,12 @@
                 const prev = currentMainView;
                 currentMainView = "age";
                 setActive("#btnAge");
+                document.getElementById("takeaway-overlay").style.display = "none";
+
                 hideYearControls();
+                takeawayOverlay.style.display = "none";
+                document.getElementById("map-container").classList.remove("hidden");
+
 
                 description.innerHTML = `
                 <strong>Age adds a natural progression to the story, since people typically build assets as they grow 
@@ -887,7 +934,12 @@
                 const prev = currentMainView;
                 currentMainView = "inc";
                 setActive("#btnInc");
+                document.getElementById("takeaway-overlay").style.display = "none";
+
                 hideYearControls();
+                takeawayOverlay.style.display = "none";
+                document.getElementById("map-container").classList.remove("hidden");
+
 
                 description.innerHTML = `
                     <strong>Income adds another familiar lens, since many assume higher earnings naturally lead to higher wealth.</strong>
@@ -910,7 +962,12 @@
                 const prev = currentMainView;
                 currentMainView = "gen";
                 setActive("#btnGen");
+                document.getElementById("takeaway-overlay").style.display = "none";
+
                 hideYearControls();
+                takeawayOverlay.style.display = "none";
+                document.getElementById("map-container").classList.remove("hidden");
+
 
                 description.innerHTML = `
                     <strong>Looking at generations shifts the story from individual circumstances to broader historical 
@@ -934,7 +991,12 @@
                 const prev = currentMainView;
                 currentMainView = "race";
                 setActive("#btnRace");
+                document.getElementById("takeaway-overlay").style.display = "none";
+
                 hideYearControls();
+                takeawayOverlay.style.display = "none";
+                document.getElementById("map-container").classList.remove("hidden");
+
 
                 description.innerHTML = `
                     <strong>Examining wealth by racial groups reveals yet another pattern that reshapes our understanding 
@@ -959,7 +1021,12 @@
                 const prev = currentMainView;
                 currentMainView = "nw";
                 setActive("#btnNW");
+                document.getElementById("takeaway-overlay").style.display = "none";
+
                 showYearControls();
+                takeawayOverlay.style.display = "none";
+                document.getElementById("map-container").classList.remove("hidden");
+
 
                 description.innerHTML = `
                     <strong>With all perspectives in mind, the net worth view brings the entire story into focus.</strong>
@@ -1016,69 +1083,69 @@
 
             };
 
-            // TAKEAWAY
+            // TAKEAWAY 
             document.getElementById("btn6").onclick = () => {
                 const prev = currentMainView;
                 currentMainView = "takeaway";
                 setActive("#btn6");
+                description.innerHTML = "";
+                map_title.textContent = "";
+
                 hideYearControls();
 
-                description.innerHTML = `
-                    <strong>What do all these categories show us?</strong><br>
-                    That wealth inequality is the product of many overlapping forces — education, age, 
-                    income, generation, and race all interact, compounding advantages for some groups 
-                    while limiting opportunities for others. When we look at the extreme top of the
-                    distribution, the concentration is especially stark.
-                `;
-                map_title.textContent = "Takeaway";
+                // 1. Show map container normally, but hide dots
+                const mapContainer = document.getElementById("map-container");
+                mapContainer.classList.remove("hidden");
+                svg.selectAll("circle").attr("visibility", "hidden");
+                svg.style("background", "#1a1a1a");
 
-                const circles = svg.selectAll("circle").nodes();
-
-                circles.sort((a, b) => +a.getAttribute("cx") - +b.getAttribute("cx"));
-
-                const totalDots = circles.length;
-                const redCount = Math.max(1, Math.round(totalDots * 0.01)); // 1%
-
-                circles.forEach((circle, i) => {
-                    d3.select(circle)
-                    .transition()
-                    .duration(400)
-                    .attr("fill", i < redCount ? "#d73027" : "#1a9850");
-                });
-
+                // 2. Clear legend + title
                 d3.select("#legend").selectAll("*").remove();
+                map_title.textContent = "";
 
-                const entries = [
-                    { color: "#d73027", label: "Top 1%" },
-                    { color: "#1a9850", label: "Remaining 99%" }
-                ];
+                // 3. Fill overlay with takeaways
+                const overlay = document.getElementById("takeaway-overlay");
+                overlay.innerHTML = `
+                    <div style="max-width:700px; margin:auto;">
+                        <h2 style="margin-top:0; margin-bottom:12px;">Final Takeaways</h2>
 
-                const legend = document.getElementById("legend");
-                legend.innerHTML = "";
+                        <p>
+                            Wealth in the United States does not accumulate evenly. Each category we explored —
+                            education, age, income, generation, and race — reveals a different structural pattern
+                            of how opportunity and history shape who holds wealth.
+                        </p>
 
-                entries.forEach(cat => {
-                    const item = document.createElement("div");
-                    item.style.display = "flex";
-                    item.style.alignItems = "center";
-                    item.style.gap = "6px";
+                        <p>
+                            These forces don’t act alone. They interact and reinforce each other, creating 
+                            advantages for some groups while limiting mobility for others. Over time, these 
+                            compounded differences produce the extreme wealth concentration we see today.
+                        </p>
 
-                    const swatch = document.createElement("div");
-                    swatch.style.width = "14px";
-                    swatch.style.height = "14px";
-                    swatch.style.borderRadius = "3px";
-                    swatch.style.backgroundColor = cat.color;
-                    swatch.style.border = "1px solid rgba(0,0,0,0.3)";
+                        <p>
+                            Understanding wealth inequality requires looking beyond income or individual effort. 
+                            It requires acknowledging how policy, generational timing, and identity influence 
+                            who is positioned to build wealth.
+                        </p>
 
-                    const label = document.createElement("span");
-                    label.style.fontSize = "13px";
-                    label.textContent = cat.label;
+                        <p>
+                            This visualization makes those patterns visible — not just as numbers, but as the 
+                            system shaping every household and every generation.
+                        </p>
 
-                    item.appendChild(swatch);
-                    item.appendChild(label);
-                    legend.appendChild(item);
-                });
+                        <p style="opacity:0.8; font-size:14px; margin-top:18px;">
+                            Use the arrows or buttons below to revisit any category.
+                        </p>
+                    </div>
+                `;
+
+                // 4. Show the overlay
+                overlay.style.display = "flex";
 
             };
+
+
+
+
 
             // YEAR CONTROLS EVENT LISTENERS
             const yearSlider = document.getElementById("year-slider");
